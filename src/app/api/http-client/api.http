@@ -1,0 +1,306 @@
+### Social Media App API Tests
+### Base URL: http://localhost:3000/api
+
+### Variables
+@baseUrl = http://localhost:3000/api
+@accessToken = your_access_token_here
+@refreshToken = your_refresh_token_here
+@userId = user_id_here
+@postId = post_id_here
+
+###############################################################################
+### AUTHENTICATION ENDPOINTS
+###############################################################################
+
+### Register a new user
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "john.doe@example.com",
+  "username": "johndoe",
+  "name": "John Doe",
+  "password": "SecurePassword123!",
+  "bio": "Software developer and social media enthusiast"
+}
+
+### Login user
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "john.doe@example.com",
+  "password": "SecurePassword123!"
+}
+
+### Refresh access token
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### Logout user (revoke refresh token)
+POST {{baseUrl}}/auth/logout
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### Logout from all devices (revoke all refresh tokens)
+POST {{baseUrl}}/auth/logout-all
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+###############################################################################
+### USER MANAGEMENT ENDPOINTS
+###############################################################################
+
+### Get current user profile
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{accessToken}}
+
+### Update current user profile
+PUT {{baseUrl}}/users/me
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "name": "John Doe Updated",
+  "bio": "Updated bio - Full stack developer",
+  "avatar": "https://example.com/avatar.jpg"
+}
+
+### Get user by ID
+GET {{baseUrl}}/users/{{userId}}
+Authorization: Bearer {{accessToken}}
+
+### Get user by username
+GET {{baseUrl}}/users/username/johndoe
+Authorization: Bearer {{accessToken}}
+
+### Search users
+GET {{baseUrl}}/users/search?q=john&page=1&limit=10
+Authorization: Bearer {{accessToken}}
+
+### Get user's followers
+GET {{baseUrl}}/users/{{userId}}/followers?page=1&limit=10
+Authorization: Bearer {{accessToken}}
+
+### Get user's following
+GET {{baseUrl}}/users/{{userId}}/following?page=1&limit=10
+Authorization: Bearer {{accessToken}}
+
+###############################################################################
+### POST MANAGEMENT ENDPOINTS
+###############################################################################
+
+### Create a new post
+POST {{baseUrl}}/posts
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "content": "This is my first post on this amazing social media platform! 🚀 #socialmedia #firstpost",
+  "imageUrl": "https://example.com/image.jpg"
+}
+
+### Get all posts (feed)
+GET {{baseUrl}}/posts?page=1&limit=10
+Authorization: Bearer {{accessToken}}
+
+### Get post by ID
+GET {{baseUrl}}/posts/{{postId}}
+Authorization: Bearer {{accessToken}}
+
+### Update a post
+PUT {{baseUrl}}/posts/{{postId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "content": "Updated post content with more details! 📝 #updated",
+  "imageUrl": "https://example.com/updated-image.jpg"
+}
+
+### Delete a post
+DELETE {{baseUrl}}/posts/{{postId}}
+Authorization: Bearer {{accessToken}}
+
+### Get user's posts
+GET {{baseUrl}}/users/{{userId}}/posts?page=1&limit=10
+Authorization: Bearer {{accessToken}}
+
+### Get posts from followed users (personal feed)
+GET {{baseUrl}}/posts/feed?page=1&limit=10
+Authorization: Bearer {{accessToken}}
+
+###############################################################################
+### LIKE MANAGEMENT ENDPOINTS
+###############################################################################
+
+### Like a post
+POST {{baseUrl}}/posts/{{postId}}/like
+Authorization: Bearer {{accessToken}}
+
+### Unlike a post
+DELETE {{baseUrl}}/posts/{{postId}}/like
+Authorization: Bearer {{accessToken}}
+
+### Get post likes
+GET {{baseUrl}}/posts/{{postId}}/likes?page=1&limit=10
+Authorization: Bearer {{accessToken}}
+
+### Check if user liked a post
+GET {{baseUrl}}/posts/{{postId}}/likes/me
+Authorization: Bearer {{accessToken}}
+
+###############################################################################
+### COMMENT MANAGEMENT ENDPOINTS
+###############################################################################
+
+### Add a comment to a post
+POST {{baseUrl}}/posts/{{postId}}/comments
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "content": "Great post! Thanks for sharing this valuable information. 👍"
+}
+
+### Get post comments
+GET {{baseUrl}}/posts/{{postId}}/comments?page=1&limit=10
+Authorization: Bearer {{accessToken}}
+
+### Update a comment
+PUT {{baseUrl}}/comments/comment_id_here
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "content": "Updated comment content with more insights! 💡"
+}
+
+### Delete a comment
+DELETE {{baseUrl}}/comments/comment_id_here
+Authorization: Bearer {{accessToken}}
+
+###############################################################################
+### FOLLOW MANAGEMENT ENDPOINTS
+###############################################################################
+
+### Follow a user
+POST {{baseUrl}}/users/{{userId}}/follow
+Authorization: Bearer {{accessToken}}
+
+### Unfollow a user
+DELETE {{baseUrl}}/users/{{userId}}/follow
+Authorization: Bearer {{accessToken}}
+
+### Check if following a user
+GET {{baseUrl}}/users/{{userId}}/follow/status
+Authorization: Bearer {{accessToken}}
+
+###############################################################################
+### ADMIN ENDPOINTS (ADMIN ROLE REQUIRED)
+###############################################################################
+
+### Get all users (admin only)
+GET {{baseUrl}}/admin/users?page=1&limit=20&role=USER
+Authorization: Bearer {{accessToken}}
+
+### Get user by ID (admin only)
+GET {{baseUrl}}/admin/users/{{userId}}
+Authorization: Bearer {{accessToken}}
+
+### Update user role (admin only)
+PUT {{baseUrl}}/admin/users/{{userId}}/role
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "role": "ADMIN"
+}
+
+### Delete user (admin only)
+DELETE {{baseUrl}}/admin/users/{{userId}}
+Authorization: Bearer {{accessToken}}
+
+### Get all posts (admin only)
+GET {{baseUrl}}/admin/posts?page=1&limit=20
+Authorization: Bearer {{accessToken}}
+
+### Delete any post (admin only)
+DELETE {{baseUrl}}/admin/posts/{{postId}}
+Authorization: Bearer {{accessToken}}
+
+###############################################################################
+### UTILITY ENDPOINTS
+###############################################################################
+
+### Health check
+GET {{baseUrl}}/health
+
+### Get API statistics
+GET {{baseUrl}}/stats
+Authorization: Bearer {{accessToken}}
+
+###############################################################################
+### SAMPLE TEST WORKFLOW
+###############################################################################
+
+### 1. Register a new user
+# POST {{baseUrl}}/auth/register
+
+### 2. Login to get tokens
+# POST {{baseUrl}}/auth/login
+
+### 3. Update the @accessToken variable with the received token
+
+### 4. Get user profile
+# GET {{baseUrl}}/users/me
+
+### 5. Create a post
+# POST {{baseUrl}}/posts
+
+### 6. Update the @postId variable with the created post ID
+
+### 7. Like the post
+# POST {{baseUrl}}/posts/{{postId}}/like
+
+### 8. Add a comment
+# POST {{baseUrl}}/posts/{{postId}}/comments
+
+### 9. Get the feed
+# GET {{baseUrl}}/posts/feed
+
+###############################################################################
+### NOTES
+###############################################################################
+
+# Before running tests:
+# 1. Start your development server: npm run dev
+# 2. Make sure your database is running and migrations are applied
+# 3. Update the @baseUrl if your server runs on a different port
+# 4. After login, copy the accessToken and refreshToken to the variables section
+# 5. Update @userId and @postId variables as needed for specific tests
+
+# Authentication Flow:
+# 1. Register or Login to get access and refresh tokens
+# 2. Use the access token in the Authorization header for protected routes
+# 3. When access token expires, use refresh token to get new tokens
+# 4. For logout, send the refresh token to revoke it
+
+# Error Responses:
+# - 400: Bad Request (validation errors)
+# - 401: Unauthorized (missing or invalid token)
+# - 403: Forbidden (insufficient permissions)
+# - 404: Not Found (resource doesn't exist)
+# - 500: Internal Server Error
+
+# Rate Limiting:
+# Some endpoints may have rate limiting implemented
+# Check response headers for rate limit information

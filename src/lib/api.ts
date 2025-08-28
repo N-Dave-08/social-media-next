@@ -105,6 +105,11 @@ export interface User {
   name: string;
   role: string;
   createdAt: string;
+  _count?: {
+    posts: number;
+    likes: number;
+    comments: number;
+  };
 }
 
 export interface Post {
@@ -181,8 +186,36 @@ export const postsApi = {
 };
 
 // Admin API
+export interface UsersResponse {
+  users: User[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface GetUsersParams {
+  search?: string;
+  role?: string;
+  page?: number;
+  limit?: number;
+}
+
 export const adminApi = {
-  getUsers: (): Promise<AxiosResponse<User[]>> => api.get("/admin/users"),
+  getUsers: (
+    params?: GetUsersParams,
+  ): Promise<AxiosResponse<UsersResponse>> => {
+    const searchParams = new URLSearchParams();
+    if (params?.search) searchParams.append("search", params.search);
+    if (params?.role) searchParams.append("role", params.role);
+    if (params?.page) searchParams.append("page", params.page.toString());
+    if (params?.limit) searchParams.append("limit", params.limit.toString());
+
+    const queryString = searchParams.toString();
+    return api.get(`/admin/users${queryString ? `?${queryString}` : ""}`);
+  },
 
   updateUserRole: (
     userId: string,

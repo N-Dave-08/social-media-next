@@ -130,6 +130,26 @@ export interface Post {
     comments: number;
   };
   likes: Array<{ userId: string }>;
+  comments?: Comment[];
+}
+
+export interface Comment {
+  id: string;
+  content: string;
+  createdAt: string;
+  user: {
+    id: string;
+    username: string;
+    name: string;
+    avatar?: string;
+  };
+}
+
+export interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }
 
 export interface AuthResponse {
@@ -210,6 +230,31 @@ export const postsApi = {
 
   likePost: (postId: string): Promise<AxiosResponse<{ liked: boolean }>> =>
     api.post(`/posts/${postId}/like`),
+
+  // Comment functions
+  getComments: (
+    postId: string,
+    page = 1,
+    limit = 10,
+  ): Promise<AxiosResponse<{ comments: Comment[]; pagination: Pagination }>> =>
+    api.get(`/posts/${postId}/comments?page=${page}&limit=${limit}`),
+
+  createComment: (
+    postId: string,
+    content: string,
+  ): Promise<AxiosResponse<Comment>> =>
+    api.post(`/posts/${postId}/comments`, { content }),
+
+  updateComment: (
+    commentId: string,
+    content: string,
+  ): Promise<AxiosResponse<Comment>> =>
+    api.put(`/comments/${commentId}`, { content }),
+
+  deleteComment: (
+    commentId: string,
+  ): Promise<AxiosResponse<{ message: string }>> =>
+    api.delete(`/comments/${commentId}`),
 };
 
 // Admin API

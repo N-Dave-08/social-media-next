@@ -5,6 +5,8 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useLogout } from "@/hooks/use-auth";
 import { useAuthStore } from "@/stores/auth-store";
+import { CreatePost } from "@/app/(web)/feed/components/create-post";
+import { PostList } from "@/app/(web)/feed/components/post-list";
 
 export default function FeedPage() {
   const { user, isLoading, isAuthenticated, initializeAuth } = useAuthStore();
@@ -78,27 +80,9 @@ export default function FeedPage() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto py-8 px-4">
-        <div className="bg-white rounded-lg p-8 shadow-sm border border-gray-200 text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            Welcome to your Feed, {user.name}!
-          </h2>
-          <p className="text-gray-600 mb-6">
-            This is the user feed page. Posts and social features will be added
-            here.
-          </p>
-          <div className="text-sm text-gray-500">
-            <p>
-              Role:{" "}
-              <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                {user.role}
-              </span>
-            </p>
-            <p className="mt-2">
-              Member since: {new Date(user.createdAt).toLocaleDateString()}
-            </p>
-          </div>
-        </div>
+      <main className="max-w-4xl mx-auto py-8 px-4 space-y-6">
+        <CreatePost />
+        <PostList />
       </main>
     </div>
   );

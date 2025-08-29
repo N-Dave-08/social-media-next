@@ -94,6 +94,10 @@ const changePasswordSchema = z.object({
   newPassword: z.string().min(6),
 });
 
+const commentSchema = z.object({
+  content: z.string().min(1).max(500),
+});
+
 // Test route
 app.get("/test", (c) => {
   return c.json({ message: "API is working!" });
@@ -289,6 +293,25 @@ app.get("/posts", async (c) => {
             name: true,
           },
         },
+        likes: {
+          select: {
+            userId: true,
+          },
+        },
+        comments: {
+          take: 3,
+          orderBy: { createdAt: "desc" },
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                name: true,
+                avatar: true,
+              },
+            },
+          },
+        },
         _count: {
           select: {
             likes: true,
@@ -325,6 +348,25 @@ app.post("/posts", authMiddleware, async (c) => {
             id: true,
             username: true,
             name: true,
+          },
+        },
+        likes: {
+          select: {
+            userId: true,
+          },
+        },
+        comments: {
+          take: 3,
+          orderBy: { createdAt: "desc" },
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                name: true,
+                avatar: true,
+              },
+            },
           },
         },
         _count: {
@@ -376,6 +418,159 @@ app.post("/posts/:id/like", authMiddleware, async (c) => {
     }
   } catch (error) {
     console.error("Like post error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// Comment endpoints
+app.post("/posts/:id/comments", authMiddleware, async (c) => {
+  try {
+    const postId = c.req.param("id");
+    const userId = c.get("userId");
+    const body = await c.req.json();
+    const { content } = commentSchema.parse(body);
+
+    const comment = await prisma.comment.create({
+      data: {
+        content,
+        userId,
+        postId,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            name: true,
+            avatar: true,
+          },
+        },
+      },
+    });
+
+    return c.json(comment);
+  } catch (error) {
+    console.error("Create comment error:", error);
+    if (error instanceof z.ZodError) {
+      return c.json({ error: "Invalid comment data" }, 400);
+    }
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+app.get("/posts/:id/comments", async (c) => {
+  try {
+    const postId = c.req.param("id");
+    const page = parseInt(c.req.query("page") || "1");
+    const limit = parseInt(c.req.query("limit") || "10");
+    const offset = (page - 1) * limit;
+
+    const comments = await prisma.comment.findMany({
+      where: { postId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            name: true,
+            avatar: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      skip: offset,
+    });
+
+    const totalComments = await prisma.comment.count({ where: { postId } });
+
+    return c.json({
+      comments,
+      pagination: {
+        page,
+        limit,
+        total: totalComments,
+        totalPages: Math.ceil(totalComments / limit),
+      },
+    });
+  } catch (error) {
+    console.error("Get comments error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+app.put("/comments/:id", authMiddleware, async (c) => {
+  try {
+    const commentId = c.req.param("id");
+    const userId = c.get("userId");
+    const body = await c.req.json();
+    const { content } = commentSchema.parse(body);
+
+    // Check if comment exists and user owns it
+    const existingComment = await prisma.comment.findUnique({
+      where: { id: commentId },
+      select: { userId: true },
+    });
+
+    if (!existingComment) {
+      return c.json({ error: "Comment not found" }, 404);
+    }
+
+    if (existingComment.userId !== userId) {
+      return c.json({ error: "Unauthorized" }, 403);
+    }
+
+    const updatedComment = await prisma.comment.update({
+      where: { id: commentId },
+      data: { content },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            name: true,
+            avatar: true,
+          },
+        },
+      },
+    });
+
+    return c.json(updatedComment);
+  } catch (error) {
+    console.error("Update comment error:", error);
+    if (error instanceof z.ZodError) {
+      return c.json({ error: "Invalid comment data" }, 400);
+    }
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+app.delete("/comments/:id", authMiddleware, async (c) => {
+  try {
+    const commentId = c.req.param("id");
+    const userId = c.get("userId");
+
+    // Check if comment exists and user owns it
+    const existingComment = await prisma.comment.findUnique({
+      where: { id: commentId },
+      select: { userId: true },
+    });
+
+    if (!existingComment) {
+      return c.json({ error: "Comment not found" }, 404);
+    }
+
+    if (existingComment.userId !== userId) {
+      return c.json({ error: "Unauthorized" }, 403);
+    }
+
+    await prisma.comment.delete({
+      where: { id: commentId },
+    });
+
+    return c.json({ message: "Comment deleted successfully" });
+  } catch (error) {
+    console.error("Delete comment error:", error);
     return c.json({ error: "Internal server error" }, 500);
   }
 });

@@ -3,8 +3,8 @@
 import { BarChart3, Settings, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { SettingsManagement } from "@/components/admin/settings-management";
-import { UserManagement } from "@/components/admin/user-management";
+import { SettingsManagement } from "@/app/(admin)/dashboard/components/settings-management";
+import { UserManagement } from "@/app/(admin)/dashboard/components/user-management";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLogout } from "@/hooks/use-auth";

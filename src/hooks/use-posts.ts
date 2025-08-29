@@ -1,16 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import { type CreatePostData, type Post, postsApi } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
 import { usePostsStore } from "@/stores/posts-store";
+import {
+  postsApi,
+  type Post,
+  type CreatePostData,
+  type Comment,
+} from "@/lib/api";
 
 export const usePosts = () => {
-  const { setPosts, setLoading, setError } = usePostsStore();
+  const { setPosts, setError } = usePostsStore();
 
   return useQuery<Post[], AxiosError>({
     queryKey: ["posts"],
     queryFn: async () => {
-      setLoading(true);
       try {
         const response = await postsApi.getPosts();
         setPosts(response.data);
@@ -20,27 +24,60 @@ export const usePosts = () => {
           error instanceof AxiosError ? error.message : "Failed to fetch posts",
         );
         throw error;
-      } finally {
-        setLoading(false);
       }
     },
+    // Keep showing cached list while fetching to avoid loading flashes
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
 };
 
 export const useCreatePost = () => {
   const queryClient = useQueryClient();
-  const { addPost } = usePostsStore();
+  const { user } = useAuthStore();
+  const { addPost, replacePost } = usePostsStore();
 
-  return useMutation<Post, AxiosError, CreatePostData>({
+  return useMutation<Post, AxiosError, CreatePostData, { tempId: string }>({
     mutationFn: async (data) => {
       const response = await postsApi.createPost(data);
       return response.data;
     },
-    onSuccess: (newPost) => {
-      // Add to Zustand store immediately
-      addPost(newPost);
+    onMutate: async (data) => {
+      await queryClient.cancelQueries({ queryKey: ["posts"] });
 
-      // Invalidate and refetch posts to ensure consistency
+      // Create a temporary optimistic post
+      const tempId = `temp-${Date.now()}`;
+      const optimisticPost: Post = {
+        id: tempId,
+        content: data.content,
+        imageUrl: data.imageUrl,
+        createdAt: new Date().toISOString(),
+        author: {
+          id: user?.id || "",
+          username: user?.username || "you",
+          name: user?.name || "You",
+          avatar: user?.avatar,
+        },
+        _count: { likes: 0, comments: 0 },
+        likes: [],
+      };
+
+      addPost(optimisticPost);
+
+      return { tempId };
+    },
+    onSuccess: (newPost, _vars, context) => {
+      if (context?.tempId) {
+        // Replace the temporary post with the actual one from the server
+        replacePost(context.tempId, newPost);
+      } else {
+        addPost(newPost);
+      }
+      // Keep cache fresh
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+    },
+    onError: () => {
+      // On error, simply refetch to reconcile state
       queryClient.invalidateQueries({ queryKey: ["posts"] });
     },
   });
@@ -51,42 +88,112 @@ export const useLikePost = () => {
   const { optimisticLike } = usePostsStore();
   const { user } = useAuthStore();
 
-  return useMutation<{ liked: boolean }, AxiosError, string>({
+  return useMutation<
+    { liked: boolean },
+    AxiosError,
+    string,
+    { previousLiked: boolean }
+  >({
     mutationFn: async (postId) => {
       const response = await postsApi.likePost(postId);
       return response.data;
     },
     onMutate: async (postId) => {
-      // Cancel any outgoing refetches
+      if (!user) return { previousLiked: false };
+
       await queryClient.cancelQueries({ queryKey: ["posts"] });
 
-      if (user) {
-        // Get current state
-        const posts = usePostsStore.getState().posts;
-        const post = posts.find((p) => p.id === postId);
+      // Get current post to determine previous like state
+      const previousPosts = queryClient.getQueryData<Post[]>(["posts"]);
+      const post = previousPosts?.find((p) => p.id === postId);
+      const previousLiked =
+        post?.likes.some((l) => l.userId === user.id) || false;
 
-        if (post) {
-          const isLiked = post.likes.some((like) => like.userId === user.id);
-          // Optimistic update
-          optimisticLike(postId, user.id, !isLiked);
-        }
-      }
+      // Optimistically update the UI
+      optimisticLike(postId, user.id, !previousLiked);
+
+      return { previousLiked };
     },
-    onError: (_error, postId) => {
+    onSuccess: (data, postId, context) => {
+      if (!user) return;
+
+      // Update the optimistic change with the real data
+      optimisticLike(postId, user.id, data.liked);
+      // Keep cache fresh
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+    },
+    onError: (error, postId, context) => {
+      if (!user) return;
+
       // Revert optimistic update on error
-      if (user) {
-        const posts = usePostsStore.getState().posts;
-        const post = posts.find((p) => p.id === postId);
-
-        if (post) {
-          const isLiked = post.likes.some((like) => like.userId === user.id);
-          // Revert the optimistic update
-          optimisticLike(postId, user.id, !isLiked);
-        }
+      if (context?.previousLiked !== undefined) {
+        optimisticLike(postId, user.id, context.previousLiked);
       }
+      // Refetch to reconcile state
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
     },
-    onSettled: () => {
-      // Refetch posts to ensure consistency
+  });
+};
+
+// Comment hooks
+export const useComments = (postId: string, page = 1, limit = 10) => {
+  return useQuery({
+    queryKey: ["comments", postId, page, limit],
+    queryFn: async () => {
+      const response = await postsApi.getComments(postId, page, limit);
+      return response.data;
+    },
+    enabled: !!postId,
+  });
+};
+
+export const useCreateComment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<Comment, AxiosError, { postId: string; content: string }>({
+    mutationFn: async ({ postId, content }) => {
+      const response = await postsApi.createComment(postId, content);
+      return response.data;
+    },
+    onSuccess: (newComment, { postId }) => {
+      // Invalidate comments for this post
+      queryClient.invalidateQueries({ queryKey: ["comments", postId] });
+      // Invalidate posts to update comment count
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+    },
+  });
+};
+
+export const useUpdateComment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    Comment,
+    AxiosError,
+    { commentId: string; content: string }
+  >({
+    mutationFn: async ({ commentId, content }) => {
+      const response = await postsApi.updateComment(commentId, content);
+      return response.data;
+    },
+    onSuccess: (updatedComment) => {
+      // Invalidate comments for the post
+      queryClient.invalidateQueries({ queryKey: ["comments"] });
+    },
+  });
+};
+
+export const useDeleteComment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ message: string }, AxiosError, string>({
+    mutationFn: async (commentId) => {
+      const response = await postsApi.deleteComment(commentId);
+      return response.data;
+    },
+    onSuccess: (_, commentId) => {
+      // Invalidate comments and posts
+      queryClient.invalidateQueries({ queryKey: ["comments"] });
       queryClient.invalidateQueries({ queryKey: ["posts"] });
     },
   });

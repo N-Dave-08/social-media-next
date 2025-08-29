@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
+import { BarChart3, Settings, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { SettingsManagement } from "@/components/admin/settings-management";
+import { UserManagement } from "@/components/admin/user-management";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLogout } from "@/hooks/use-auth";
 import { useAuthStore } from "@/stores/auth-store";
-import { UserManagement } from "@/components/admin/user-management";
-import { ContentManagement } from "@/components/admin/content-management";
-import { Users, FileText, BarChart3, Settings } from "lucide-react";
 
 export default function DashboardPage() {
   const { user, isLoading, isAuthenticated, initializeAuth } = useAuthStore();
@@ -108,48 +108,28 @@ export default function DashboardPage() {
 
           {/* Admin Tabs */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-            <Tabs defaultValue="users" className="w-full">
-              <TabsList className="grid w-full grid-cols-4 bg-gray-50 p-1 m-4 rounded-lg">
-                <TabsTrigger
-                  value="users"
-                  className="flex items-center space-x-2"
-                >
+            <Tabs defaultValue="users">
+              <TabsList className="w-[calc(100%-2rem)] mx-4 mt-4">
+                <TabsTrigger value="users">
                   <Users className="w-4 h-4" />
                   <span>Users</span>
                 </TabsTrigger>
-                <TabsTrigger
-                  value="content"
-                  className="flex items-center space-x-2"
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>Content</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="analytics"
-                  className="flex items-center space-x-2"
-                >
+                <TabsTrigger value="analytics">
                   <BarChart3 className="w-4 h-4" />
                   <span>Analytics</span>
                 </TabsTrigger>
-                <TabsTrigger
-                  value="settings"
-                  className="flex items-center space-x-2"
-                >
+                <TabsTrigger value="settings">
                   <Settings className="w-4 h-4" />
                   <span>Settings</span>
                 </TabsTrigger>
               </TabsList>
 
               <div className="p-6">
-                <TabsContent value="users" className="mt-0">
+                <TabsContent value="users">
                   <UserManagement />
                 </TabsContent>
 
-                <TabsContent value="content" className="mt-0">
-                  <ContentManagement />
-                </TabsContent>
-
-                <TabsContent value="analytics" className="mt-0">
+                <TabsContent value="analytics">
                   <div className="space-y-6">
                     <div className="flex items-center space-x-2">
                       <BarChart3 className="w-6 h-6 text-gray-700" />
@@ -169,24 +149,8 @@ export default function DashboardPage() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="settings" className="mt-0">
-                  <div className="space-y-6">
-                    <div className="flex items-center space-x-2">
-                      <Settings className="w-6 h-6 text-gray-700" />
-                      <h2 className="text-2xl font-bold text-gray-900">
-                        Settings
-                      </h2>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-8 text-center">
-                      <p className="text-gray-600 mb-4">
-                        System settings are coming soon!
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        This will include platform configuration, security
-                        settings, and feature toggles.
-                      </p>
-                    </div>
-                  </div>
+                <TabsContent value="settings">
+                  <SettingsManagement />
                 </TabsContent>
               </div>
             </Tabs>

@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { type Context, Hono, type Next } from "hono";
 import { cors } from "hono/cors";
@@ -5,7 +6,6 @@ import { logger } from "hono/logger";
 import { handle } from "hono/vercel";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import type { Prisma } from "@prisma/client";
 import {
   generateTokenPair,
   refreshAccessToken,
@@ -80,6 +80,18 @@ const loginSchema = z.object({
 
 const postSchema = z.object({
   content: z.string().min(1).max(280),
+});
+
+const updateProfileSchema = z.object({
+  name: z.string().min(1).optional(),
+  username: z.string().min(3).optional(),
+  email: z.string().email().optional(),
+  bio: z.string().max(500).optional(),
+});
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(6),
 });
 
 // Test route
@@ -364,6 +376,143 @@ app.post("/posts/:id/like", authMiddleware, async (c) => {
     }
   } catch (error) {
     console.error("Like post error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// User profile routes
+app.get("/users/me", authMiddleware, async (c) => {
+  try {
+    const userId = c.get("userId");
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        name: true,
+        bio: true,
+        avatar: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      return c.json({ error: "User not found" }, 404);
+    }
+
+    return c.json(user);
+  } catch (error) {
+    console.error("Get user profile error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+app.put("/users/me", authMiddleware, async (c) => {
+  try {
+    const userId = c.get("userId");
+    const body = await c.req.json();
+    const { name, username, email, bio } = updateProfileSchema.parse(body);
+
+    // Check if username or email is already taken by another user
+    if (username || email) {
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          AND: [
+            { id: { not: userId } },
+            {
+              OR: [
+                ...(username ? [{ username }] : []),
+                ...(email ? [{ email }] : []),
+              ],
+            },
+          ],
+        },
+      });
+
+      if (existingUser) {
+        if (existingUser.username === username) {
+          return c.json({ error: "Username is already taken" }, 400);
+        }
+        if (existingUser.email === email) {
+          return c.json({ error: "Email is already taken" }, 400);
+        }
+      }
+    }
+
+    // Update user profile
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(name && { name }),
+        ...(username && { username }),
+        ...(email && { email }),
+        ...(bio !== undefined && { bio }),
+      },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        name: true,
+        bio: true,
+        avatar: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+
+    return c.json(updatedUser);
+  } catch (error) {
+    console.error("Update user profile error:", error);
+    if (error instanceof z.ZodError) {
+      return c.json({ error: "Invalid input data" }, 400);
+    }
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+app.put("/users/me/password", authMiddleware, async (c) => {
+  try {
+    const userId = c.get("userId");
+    const body = await c.req.json();
+    const { currentPassword, newPassword } = changePasswordSchema.parse(body);
+
+    // Get current user with password
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { password: true },
+    });
+
+    if (!user) {
+      return c.json({ error: "User not found" }, 404);
+    }
+
+    // Verify current password
+    const isValidPassword = await bcrypt.compare(
+      currentPassword,
+      user.password,
+    );
+    if (!isValidPassword) {
+      return c.json({ error: "Current password is incorrect" }, 400);
+    }
+
+    // Hash new password
+    const hashedNewPassword = await bcrypt.hash(newPassword, 12);
+
+    // Update password
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedNewPassword },
+    });
+
+    return c.json({ message: "Password updated successfully" });
+  } catch (error) {
+    console.error("Change password error:", error);
+    if (error instanceof z.ZodError) {
+      return c.json({ error: "Invalid input data" }, 400);
+    }
     return c.json({ error: "Internal server error" }, 500);
   }
 });

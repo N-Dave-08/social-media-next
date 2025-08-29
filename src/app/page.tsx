@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { AuthForm } from "@/components/forms/auth-form";
 import { useAuthStore } from "@/stores/auth-store";
 

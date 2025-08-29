@@ -103,6 +103,8 @@ export interface User {
   email: string;
   username: string;
   name: string;
+  bio?: string;
+  avatar?: string;
   role: string;
   createdAt: string;
   _count?: {
@@ -151,6 +153,18 @@ export interface SignupData {
   password: string;
 }
 
+export interface UpdateProfileData {
+  name?: string;
+  username?: string;
+  email?: string;
+  bio?: string;
+}
+
+export interface ChangePasswordData {
+  currentPassword: string;
+  newPassword: string;
+}
+
 export interface CreatePostData {
   content: string;
   imageUrl?: string;
@@ -172,6 +186,19 @@ export const authApi = {
 
   logoutAll: (): Promise<AxiosResponse<{ message: string }>> =>
     api.post("/auth/logout-all"),
+};
+
+// User API
+export const userApi = {
+  getProfile: (): Promise<AxiosResponse<User>> => api.get("/users/me"),
+
+  updateProfile: (data: UpdateProfileData): Promise<AxiosResponse<User>> =>
+    api.put("/users/me", data),
+
+  changePassword: (
+    data: ChangePasswordData,
+  ): Promise<AxiosResponse<{ message: string }>> =>
+    api.put("/users/me/password", data),
 };
 
 // Posts API

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { Send } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useCreateComment } from "@/hooks/use-posts";

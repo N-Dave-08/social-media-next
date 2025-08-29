@@ -2,11 +2,12 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AxiosError } from "axios";
-import { FileText, Lock, Mail, User, Camera, Trash2 } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
+import { Camera, FileText, Lock, Trash2, User } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,13 +27,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   useChangePassword,
   useProfile,
+  useRemoveAvatar,
   useUpdateProfile,
   useUploadAvatar,
-  useRemoveAvatar,
 } from "@/hooks/use-profile";
 
 const profileSchema = z.object({

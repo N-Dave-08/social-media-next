@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { MessageCircle, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, MessageCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useComments } from "@/hooks/use-posts";
+import type { Comment, Post } from "@/lib/api";
+import { usePostsStore } from "@/stores/posts-store";
 import { CommentForm } from "./comment-form";
 import { CommentItem } from "./comment-item";
-import { useComments } from "@/hooks/use-posts";
-import { usePostsStore } from "@/stores/posts-store";
-import type { Post, Comment } from "@/lib/api";
 
 interface CommentsSectionProps {
   post: Post;

@@ -1,14 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
+import {
+  type Comment,
+  type CreatePostData,
+  type Pagination,
+  type Post,
+  postsApi,
+} from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
 import { usePostsStore } from "@/stores/posts-store";
-import {
-  postsApi,
-  type Post,
-  type CreatePostData,
-  type Comment,
-  type Pagination,
-} from "@/lib/api";
 
 export const usePosts = () => {
   const { setPosts, setError } = usePostsStore();

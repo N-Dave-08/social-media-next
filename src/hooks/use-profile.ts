@@ -69,7 +69,7 @@ export const useUploadAvatar = () => {
     },
     onSuccess: (data) => {
       // Update the profile query cache with new avatar
-      queryClient.setQueryData(["profile"], (old: any) => ({
+      queryClient.setQueryData(["profile"], (old: User | undefined) => ({
         ...old,
         avatar: data.avatar,
       }));
@@ -99,7 +99,7 @@ export const useRemoveAvatar = () => {
     },
     onSuccess: () => {
       // Update the profile query cache to remove avatar
-      queryClient.setQueryData(["profile"], (old: any) => ({
+      queryClient.setQueryData(["profile"], (old: User | undefined) => ({
         ...old,
         avatar: undefined,
       }));

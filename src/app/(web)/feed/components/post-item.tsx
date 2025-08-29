@@ -2,11 +2,11 @@
 
 import { Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLikePost } from "@/hooks/use-posts";
+import type { Post } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth-store";
-import { useLikePost } from "@/hooks/use-posts";
 import { CommentsSection } from "./comments-section";
-import type { Post } from "@/lib/api";
 
 interface PostItemProps {
   post: Post;

@@ -1,12 +1,12 @@
 "use client";
 
+import { Edit2, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { Edit2, Trash2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useAuthStore } from "@/stores/auth-store";
-import { useUpdateComment, useDeleteComment } from "@/hooks/use-posts";
+import { useDeleteComment, useUpdateComment } from "@/hooks/use-posts";
 import type { Comment } from "@/lib/api";
+import { useAuthStore } from "@/stores/auth-store";
 
 interface CommentItemProps {
   comment: Comment;

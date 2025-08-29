@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Post, Comment } from "@/lib/api";
+import type { Comment, Post } from "@/lib/api";
 
 interface PostsState {
   posts: Post[];

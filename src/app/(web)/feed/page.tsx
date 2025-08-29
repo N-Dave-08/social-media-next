@@ -2,11 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { CreatePost } from "@/app/(web)/feed/components/create-post";
+import { PostList } from "@/app/(web)/feed/components/post-list";
 import { Button } from "@/components/ui/button";
 import { useLogout } from "@/hooks/use-auth";
 import { useAuthStore } from "@/stores/auth-store";
-import { CreatePost } from "@/app/(web)/feed/components/create-post";
-import { PostList } from "@/app/(web)/feed/components/post-list";
 
 export default function FeedPage() {
   const { user, isLoading, isAuthenticated, initializeAuth } = useAuthStore();

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CommentForm } from "./comment-form";
 import { CommentItem } from "./comment-item";
 import { useComments } from "@/hooks/use-posts";
+import { usePostsStore } from "@/stores/posts-store";
 import type { Post, Comment } from "@/lib/api";
 
 interface CommentsSectionProps {
@@ -17,13 +18,16 @@ export function CommentsSection({ post }: CommentsSectionProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [allComments, setAllComments] = useState<Comment[]>([]);
 
+  // Get the latest post data from the Zustand store to ensure optimistic updates are reflected
+  const { posts } = usePostsStore();
+  const latestPost = posts.find((p) => p.id === post.id) || post;
+
   const {
     data: commentsData,
     isLoading,
     refetch,
   } = useComments(post.id, currentPage, 10);
 
-  const comments = commentsData?.comments || [];
   const pagination = commentsData?.pagination;
   const hasComments = allComments.length > 0;
   const hasMoreComments = pagination && currentPage < pagination.totalPages;
@@ -32,12 +36,12 @@ export function CommentsSection({ post }: CommentsSectionProps) {
   useEffect(() => {
     if (commentsData) {
       if (currentPage === 1) {
-        setAllComments(comments);
+        setAllComments(commentsData.comments);
       } else {
-        setAllComments((prev) => [...prev, ...comments]);
+        setAllComments((prev) => [...prev, ...commentsData.comments]);
       }
     }
-  }, [commentsData, currentPage, comments]);
+  }, [commentsData, currentPage]);
 
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded);
@@ -48,10 +52,8 @@ export function CommentsSection({ post }: CommentsSectionProps) {
   };
 
   const handleCommentAdded = () => {
-    // Reset to first page and refresh
-    setCurrentPage(1);
-    setAllComments([]);
-    refetch();
+    // No need to reset and refetch since we use optimistic updates
+    // The comment will appear immediately and be updated with the real data on success
   };
 
   const loadMoreComments = () => {
@@ -67,7 +69,7 @@ export function CommentsSection({ post }: CommentsSectionProps) {
         <div className="flex items-center space-x-2">
           <MessageCircle className="w-4 h-4 text-gray-500" />
           <span className="text-sm font-medium text-gray-700">
-            {post._count.comments} comments
+            {latestPost._count?.comments || 0} comments
           </span>
         </div>
         {hasComments && (

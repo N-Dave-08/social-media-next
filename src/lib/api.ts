@@ -9,8 +9,10 @@ const api = axios.create({
   withCredentials: true, // Include cookies in requests
 });
 
-// Token refresh flag to prevent multiple refresh attempts
+// Token refresh state management with race condition protection
+// This prevents multiple concurrent refresh attempts by sharing a single refresh promise
 let isRefreshing = false;
+let refreshPromise: Promise<string> | null = null;
 let failedQueue: Array<{
   resolve: (value?: string) => void;
   reject: (reason?: Error) => void;
@@ -25,6 +27,13 @@ const processQueue = (error: Error | null, token: string | null = null) => {
     }
   });
 
+  failedQueue = [];
+};
+
+// Reset refresh state on successful refresh
+const resetRefreshState = () => {
+  isRefreshing = false;
+  refreshPromise = null;
   failedQueue = [];
 };
 
@@ -45,51 +54,67 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      if (isRefreshing) {
-        // If already refreshing, queue this request
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            return api(originalRequest);
-          })
-          .catch((err) => {
-            return Promise.reject(err);
-          });
+      if (isRefreshing && refreshPromise) {
+        // If already refreshing, wait for the existing refresh promise
+        try {
+          const token = await refreshPromise;
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return api(originalRequest);
+        } catch (refreshError) {
+          return Promise.reject(refreshError);
+        }
       }
 
       originalRequest._retry = true;
       isRefreshing = true;
 
-      try {
+      // Create a single refresh promise that all concurrent requests will share
+      refreshPromise = new Promise<string>((resolve, reject) => {
         // Try to refresh the token
-        const response = await api.post("/auth/refresh");
-        const { accessToken } = response.data;
+        api
+          .post("/auth/refresh")
+          .then((response) => {
+            const { accessToken } = response.data;
 
-        // Store new access token
-        localStorage.setItem("accessToken", accessToken);
+            // Store new access token
+            localStorage.setItem("accessToken", accessToken);
 
-        // Process queued requests
-        processQueue(null, accessToken);
+            // Process queued requests
+            processQueue(null, accessToken);
 
+            resolve(accessToken);
+          })
+          .catch((refreshError) => {
+            // Refresh failed - clear auth state and redirect to login
+            processQueue(refreshError as Error, null);
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("user");
+
+            // Only redirect if we're not already on auth pages and not already redirecting
+            if (
+              !window.location.pathname.includes("/auth") &&
+              !window.location.pathname.includes("/login")
+            ) {
+              // Use a small delay to prevent rapid redirects
+              setTimeout(() => {
+                window.location.href = "/";
+              }, 100);
+            }
+
+            reject(refreshError);
+          })
+          .finally(() => {
+            resetRefreshState();
+          });
+      });
+
+      try {
+        const token = await refreshPromise;
         // Retry original request
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        originalRequest.headers.Authorization = `Bearer ${token}`;
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed - clear auth state and redirect to login
-        processQueue(refreshError as Error, null);
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("user");
-
-        // Only redirect if we're not already on auth pages
-        if (!window.location.pathname.includes("/auth")) {
-          window.location.href = "/";
-        }
-
         return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
       }
     }
 
@@ -219,6 +244,19 @@ export const userApi = {
     data: ChangePasswordData,
   ): Promise<AxiosResponse<{ message: string }>> =>
     api.put("/users/me/password", data),
+
+  uploadAvatar: (file: File): Promise<AxiosResponse<{ avatar: string }>> => {
+    const formData = new FormData();
+    formData.append("avatar", file);
+    return api.put("/users/me/avatar", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+
+  removeAvatar: (): Promise<AxiosResponse<{ message: string }>> =>
+    api.delete("/users/me/avatar"),
 };
 
 // Posts API

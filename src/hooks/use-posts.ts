@@ -7,6 +7,7 @@ import {
   type Post,
   type CreatePostData,
   type Comment,
+  type Pagination,
 } from "@/lib/api";
 
 export const usePosts = () => {
@@ -114,15 +115,14 @@ export const useLikePost = () => {
 
       return { previousLiked };
     },
-    onSuccess: (data, postId, context) => {
+    onSuccess: (_, _postId, _context) => {
       if (!user) return;
 
-      // Update the optimistic change with the real data
-      optimisticLike(postId, user.id, data.liked);
-      // Keep cache fresh
+      // Let the server response provide the final accurate count
+      // The optimistic update was already applied in onMutate
       queryClient.invalidateQueries({ queryKey: ["posts"] });
     },
-    onError: (error, postId, context) => {
+    onError: (_error, postId, context) => {
       if (!user) return;
 
       // Revert optimistic update on error
@@ -149,17 +149,149 @@ export const useComments = (postId: string, page = 1, limit = 10) => {
 
 export const useCreateComment = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const { addComment } = usePostsStore();
 
-  return useMutation<Comment, AxiosError, { postId: string; content: string }>({
+  return useMutation<
+    Comment,
+    AxiosError,
+    { postId: string; content: string },
+    {
+      previousComments:
+        | { comments: Comment[]; pagination: Pagination }
+        | undefined;
+      optimisticComment: Comment;
+    }
+  >({
     mutationFn: async ({ postId, content }) => {
       const response = await postsApi.createComment(postId, content);
       return response.data;
     },
-    onSuccess: (newComment, { postId }) => {
-      // Invalidate comments for this post
-      queryClient.invalidateQueries({ queryKey: ["comments", postId] });
-      // Invalidate posts to update comment count
-      queryClient.invalidateQueries({ queryKey: ["posts"] });
+    onMutate: async ({ postId, content }) => {
+      if (!user)
+        return {
+          previousComments: undefined,
+          optimisticComment: {} as Comment,
+        };
+
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["comments", postId] });
+
+      // Snapshot the previous value
+      const previousComments = queryClient.getQueryData<{
+        comments: Comment[];
+        pagination: Pagination;
+      }>(["comments", postId, 1, 10]);
+
+      // Create optimistic comment
+      const optimisticComment: Comment = {
+        id: `temp-${Date.now()}`, // Temporary ID
+        content,
+        createdAt: new Date().toISOString(),
+        user: {
+          id: user.id,
+          username: user.username,
+          name: user.name,
+          avatar: user.avatar,
+        },
+      };
+
+      // Optimistically update comments in React Query cache
+      queryClient.setQueryData<{ comments: Comment[]; pagination: Pagination }>(
+        ["comments", postId, 1, 10],
+        (old) => {
+          if (!old) {
+            return {
+              comments: [optimisticComment],
+              pagination: {
+                page: 1,
+                limit: 10,
+                total: 1,
+                totalPages: 1,
+              },
+            };
+          }
+          return {
+            ...old,
+            comments: [optimisticComment, ...old.comments],
+            pagination: {
+              ...old.pagination,
+              total: old.pagination.total + 1,
+            },
+          };
+        },
+      );
+
+      // Also optimistically update the posts list to increment comment count in React Query cache
+      queryClient.setQueryData<Post[]>(["posts"], (old) => {
+        if (!old) return old;
+        return old.map((post) => {
+          if (post.id === postId) {
+            return {
+              ...post,
+              _count: {
+                ...post._count,
+                comments: post._count.comments + 1,
+              },
+            };
+          }
+          return post;
+        });
+      });
+
+      // Update the Zustand store as well to keep it in sync
+      addComment(postId, optimisticComment);
+
+      return { previousComments, optimisticComment };
+    },
+    onSuccess: (newComment, { postId }, context) => {
+      if (!context) return;
+
+      // Update the optimistic comment with the real one in React Query cache
+      queryClient.setQueryData<{ comments: Comment[]; pagination: Pagination }>(
+        ["comments", postId, 1, 10],
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            comments: old.comments.map((comment) =>
+              comment.id === context.optimisticComment.id
+                ? newComment
+                : comment,
+            ),
+          };
+        },
+      );
+    },
+    onError: (_error, { postId }, context) => {
+      if (!context) return;
+
+      // Revert optimistic updates on error in React Query cache
+      queryClient.setQueryData(
+        ["comments", postId, 1, 10],
+        context.previousComments,
+      );
+
+      // Revert post comment count in React Query cache
+      queryClient.setQueryData<Post[]>(["posts"], (old) => {
+        if (!old) return old;
+        return old.map((post) => {
+          if (post.id === postId) {
+            return {
+              ...post,
+              _count: {
+                ...post._count,
+                comments: Math.max(0, post._count.comments - 1),
+              },
+            };
+          }
+          return post;
+        });
+      });
+
+      // Note: We don't need to revert the Zustand store here because
+      // the optimistic comment will be replaced with the real one on success
+      // and if there's an error, the user will see the comment disappear
     },
   });
 };
@@ -170,15 +302,17 @@ export const useUpdateComment = () => {
   return useMutation<
     Comment,
     AxiosError,
-    { commentId: string; content: string }
+    { commentId: string; content: string; postId: string }
   >({
     mutationFn: async ({ commentId, content }) => {
       const response = await postsApi.updateComment(commentId, content);
       return response.data;
     },
-    onSuccess: (updatedComment) => {
-      // Invalidate comments for the post
-      queryClient.invalidateQueries({ queryKey: ["comments"] });
+    onSuccess: (_, { postId }) => {
+      // Invalidate comments for the specific post only
+      queryClient.invalidateQueries({ queryKey: ["comments", postId] });
+      // Invalidate posts to update comment count
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
     },
   });
 };
@@ -186,14 +320,19 @@ export const useUpdateComment = () => {
 export const useDeleteComment = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{ message: string }, AxiosError, string>({
-    mutationFn: async (commentId) => {
+  return useMutation<
+    { message: string },
+    AxiosError,
+    { commentId: string; postId: string }
+  >({
+    mutationFn: async ({ commentId }) => {
       const response = await postsApi.deleteComment(commentId);
       return response.data;
     },
-    onSuccess: (_, commentId) => {
-      // Invalidate comments and posts
-      queryClient.invalidateQueries({ queryKey: ["comments"] });
+    onSuccess: (_, { postId }) => {
+      // Invalidate comments for the specific post only
+      queryClient.invalidateQueries({ queryKey: ["comments", postId] });
+      // Invalidate posts to update comment count
       queryClient.invalidateQueries({ queryKey: ["posts"] });
     },
   });

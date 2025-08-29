@@ -87,16 +87,36 @@ export const usePostsStore = create<PostsStore>((set) => ({
       posts: state.posts.map((post) => {
         if (post.id === postId) {
           const existingLikes = Array.isArray(post.likes) ? post.likes : [];
-          const newLikes = liked
-            ? [...existingLikes, { userId }]
-            : existingLikes.filter((like) => like.userId !== userId);
+          const currentLikeCount = post._count.likes || 0;
+
+          // Check if user already liked this post
+          const alreadyLiked = existingLikes.some(
+            (like) => like.userId === userId,
+          );
+
+          let newLikes: Array<{ userId: string }>;
+          let newLikeCount: number;
+
+          if (liked && !alreadyLiked) {
+            // Adding a like
+            newLikes = [...existingLikes, { userId }];
+            newLikeCount = currentLikeCount + 1;
+          } else if (!liked && alreadyLiked) {
+            // Removing a like
+            newLikes = existingLikes.filter((like) => like.userId !== userId);
+            newLikeCount = Math.max(0, currentLikeCount - 1);
+          } else {
+            // No change needed - this handles edge cases where the state is already correct
+            newLikes = existingLikes;
+            newLikeCount = currentLikeCount;
+          }
 
           return {
             ...post,
             likes: newLikes,
             _count: {
               ...post._count,
-              likes: newLikes.length,
+              likes: newLikeCount,
             },
           } as Post;
         }

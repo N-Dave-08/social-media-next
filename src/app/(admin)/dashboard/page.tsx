@@ -72,6 +72,13 @@ export default function DashboardPage() {
               <span className="text-gray-700">@{user.username}</span>
             </div>
             <Button
+              variant="ghost"
+              onClick={() => router.push("/profile")}
+              className="text-gray-600 hover:text-gray-900"
+            >
+              Profile
+            </Button>
+            <Button
               variant="outline"
               onClick={handleLogout}
               disabled={logoutMutation.isPending}

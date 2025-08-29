@@ -31,7 +31,7 @@ export function CommentItem({ comment, postId }: CommentItemProps) {
   const handleSave = () => {
     if (editContent.trim() && editContent !== comment.content) {
       updateCommentMutation.mutate(
-        { commentId: comment.id, content: editContent.trim() },
+        { commentId: comment.id, content: editContent.trim(), postId },
         {
           onSuccess: () => {
             setIsEditing(false);
@@ -50,7 +50,7 @@ export function CommentItem({ comment, postId }: CommentItemProps) {
 
   const handleDelete = () => {
     if (confirm("Are you sure you want to delete this comment?")) {
-      deleteCommentMutation.mutate(comment.id);
+      deleteCommentMutation.mutate({ commentId: comment.id, postId });
     }
   };
 

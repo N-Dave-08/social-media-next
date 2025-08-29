@@ -44,10 +44,76 @@ export const useUpdateProfile = () => {
 };
 
 export const useChangePassword = () => {
+  const queryClient = useQueryClient();
+
   return useMutation<{ message: string }, AxiosError, ChangePasswordData>({
     mutationFn: async (data) => {
       const response = await userApi.changePassword(data);
       return response.data;
+    },
+    onSuccess: () => {
+      // Invalidate profile query to refresh user data
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
+};
+
+export const useUploadAvatar = () => {
+  const queryClient = useQueryClient();
+  const { setUser } = useAuthStore();
+
+  return useMutation<{ avatar: string }, AxiosError, File>({
+    mutationFn: async (file) => {
+      const response = await userApi.uploadAvatar(file);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      // Update the profile query cache with new avatar
+      queryClient.setQueryData(["profile"], (old: any) => ({
+        ...old,
+        avatar: data.avatar,
+      }));
+
+      // Update the auth store with the new user data
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser) {
+        const updatedUser = { ...currentUser, avatar: data.avatar };
+        setUser(updatedUser);
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+      }
+
+      // Invalidate related queries
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
+};
+
+export const useRemoveAvatar = () => {
+  const queryClient = useQueryClient();
+  const { setUser } = useAuthStore();
+
+  return useMutation<{ message: string }, AxiosError>({
+    mutationFn: async () => {
+      const response = await userApi.removeAvatar();
+      return response.data;
+    },
+    onSuccess: () => {
+      // Update the profile query cache to remove avatar
+      queryClient.setQueryData(["profile"], (old: any) => ({
+        ...old,
+        avatar: undefined,
+      }));
+
+      // Update the auth store with the new user data
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser) {
+        const updatedUser = { ...currentUser, avatar: undefined };
+        setUser(updatedUser);
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+      }
+
+      // Invalidate related queries
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });
 };

@@ -6,6 +6,11 @@ import { logger } from "hono/logger";
 import { handle } from "hono/vercel";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { writeFile, mkdir, readFile, unlink } from "fs/promises";
+import { join } from "path";
+import { existsSync } from "fs";
+import { v4 as uuidv4 } from "uuid";
+import sharp from "sharp";
 import {
   generateTokenPair,
   refreshAccessToken,
@@ -708,6 +713,188 @@ app.put("/users/me/password", authMiddleware, async (c) => {
     if (error instanceof z.ZodError) {
       return c.json({ error: "Invalid input data" }, 400);
     }
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// Avatar management routes
+app.put("/users/me/avatar", authMiddleware, async (c) => {
+  try {
+    const userId = c.get("userId");
+    const formData = await c.req.formData();
+    const avatarFile = formData.get("avatar") as File;
+
+    if (!avatarFile) {
+      return c.json({ error: "Avatar file is required" }, 400);
+    }
+
+    // Enhanced file validation
+    const allowedTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+    ];
+    if (!allowedTypes.includes(avatarFile.type.toLowerCase())) {
+      return c.json(
+        {
+          error: "Invalid file type. Only JPG, PNG, GIF, and WebP are allowed",
+        },
+        400,
+      );
+    }
+
+    // Validate file size (max 2MB for better performance)
+    const maxSize = 2 * 1024 * 1024; // 2MB
+    if (avatarFile.size > maxSize) {
+      return c.json(
+        {
+          error: `File size must be less than 2MB. Current size: ${(avatarFile.size / 1024 / 1024).toFixed(2)}MB`,
+        },
+        400,
+      );
+    }
+
+    // Validate file extension matches MIME type
+    const fileExtension = avatarFile.name.split(".").pop()?.toLowerCase();
+    const validExtensions = ["jpg", "jpeg", "png", "gif", "webp"];
+    if (!fileExtension || !validExtensions.includes(fileExtension)) {
+      return c.json({ error: "Invalid file extension" }, 400);
+    }
+
+    // Generate secure unique filename with UUID (always JPEG after processing)
+    const timestamp = Date.now();
+    const uuid = uuidv4();
+    const fileName = `avatar_${userId}_${timestamp}_${uuid}.jpg`;
+
+    // Create avatars directory if it doesn't exist
+    const avatarsDir = join(process.cwd(), "public", "avatars");
+    if (!existsSync(avatarsDir)) {
+      await mkdir(avatarsDir, { recursive: true });
+    }
+
+    // Process image with Sharp to strip EXIF data and optimize
+    const arrayBuffer = await avatarFile.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Process image with Sharp
+    let processedImageBuffer: Buffer;
+    try {
+      processedImageBuffer = await sharp(buffer)
+        .resize(400, 400, {
+          // Resize to reasonable avatar size
+          fit: "cover",
+          position: "center",
+        })
+        .jpeg({
+          quality: 85, // Good quality for avatars
+          progressive: true, // Progressive JPEG for better loading
+          mozjpeg: true, // Use mozjpeg for better compression
+        })
+        .toBuffer(); // Sharp automatically strips EXIF data when converting
+    } catch (sharpError) {
+      console.error("Image processing error:", sharpError);
+      return c.json(
+        { error: "Failed to process image. Please try a different image." },
+        400,
+      );
+    }
+
+    // Save the processed file to the avatars directory
+    const filePath = join(avatarsDir, fileName);
+    await writeFile(filePath, processedImageBuffer);
+
+    // Store the public URL path with cache busting
+    const avatarUrl = `/api/avatars/${fileName}?v=${timestamp}`;
+
+    // Update user's avatar in database
+    await prisma.user.update({
+      where: { id: userId },
+      data: { avatar: avatarUrl },
+    });
+
+    return c.json({ avatar: avatarUrl });
+  } catch (error) {
+    console.error("Avatar upload error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// Serve avatar files
+app.get("/avatars/:filename", async (c) => {
+  try {
+    const filename = c.req.param("filename");
+
+    // Security: Validate filename format (prevent directory traversal)
+    if (!filename.match(/^avatar_\w+_\d+_[a-f0-9-]{36}\.jpg$/)) {
+      return c.json({ error: "Invalid filename format" }, 400);
+    }
+
+    const filePath = join(process.cwd(), "public", "avatars", filename);
+
+    // Check if file exists
+    if (!existsSync(filePath)) {
+      return c.json({ error: "Avatar not found" }, 404);
+    }
+
+    // Read and serve the file
+    const fileBuffer = await readFile(filePath);
+
+    // All processed avatars are JPEG
+    const contentType = "image/jpeg";
+
+    return new Response(Uint8Array.from(fileBuffer), {
+      headers: {
+        "Content-Type": contentType,
+        "Cache-Control": "public, max-age=31536000", // Cache for 1 year
+        "X-Content-Type-Options": "nosniff", // Security header
+        "X-Frame-Options": "DENY", // Security header
+      },
+    });
+  } catch (error) {
+    console.error("Avatar serve error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+app.delete("/users/me/avatar", authMiddleware, async (c) => {
+  try {
+    const userId = c.get("userId");
+
+    // Get current user to find avatar file
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { avatar: true },
+    });
+
+    // Remove avatar from user
+    await prisma.user.update({
+      where: { id: userId },
+      data: { avatar: null },
+    });
+
+    // Delete the actual file if it exists
+    if (user?.avatar) {
+      try {
+        // Extract filename from URL (remove /api/avatars/ prefix and query params)
+        const urlParts = user.avatar.split("?")[0]; // Remove query params
+        const filename = urlParts.replace("/api/avatars/", "");
+        if (filename) {
+          const filePath = join(process.cwd(), "public", "avatars", filename);
+          if (existsSync(filePath)) {
+            await unlink(filePath);
+          }
+        }
+      } catch (fileError) {
+        // Log error but don't fail the request
+        console.error("Failed to delete avatar file:", fileError);
+      }
+    }
+
+    return c.json({ message: "Avatar removed successfully" });
+  } catch (error) {
+    console.error("Avatar removal error:", error);
     return c.json({ error: "Internal server error" }, 500);
   }
 });

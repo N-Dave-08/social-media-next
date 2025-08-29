@@ -5,10 +5,9 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useLogout } from "@/hooks/use-auth";
 import { useAuthStore } from "@/stores/auth-store";
-import { CreatePost } from "@/app/(web)/feed/components/create-post";
-import { PostList } from "@/app/(web)/feed/components/post-list";
+import { ProfileManagement } from "./components/profile-management";
 
-export default function FeedPage() {
+export default function ProfilePage() {
   const { user, isLoading, isAuthenticated, initializeAuth } = useAuthStore();
   const logoutMutation = useLogout();
   const router = useRouter();
@@ -61,7 +60,16 @@ export default function FeedPage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-4 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Feed</h1>
+          <div className="flex items-center space-x-4">
+            <Button
+              variant="ghost"
+              onClick={() => router.push("/feed")}
+              className="text-gray-600 hover:text-gray-900"
+            >
+              ← Back to Feed
+            </Button>
+            <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
+          </div>
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
@@ -69,13 +77,6 @@ export default function FeedPage() {
               </div>
               <span className="text-gray-700">@{user.username}</span>
             </div>
-            <Button
-              variant="ghost"
-              onClick={() => router.push("/profile")}
-              className="text-gray-600 hover:text-gray-900"
-            >
-              Profile
-            </Button>
             <Button
               variant="outline"
               onClick={handleLogout}
@@ -87,9 +88,8 @@ export default function FeedPage() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto py-8 px-4 space-y-6">
-        <CreatePost />
-        <PostList />
+      <main className="max-w-4xl mx-auto py-8 px-4">
+        <ProfileManagement />
       </main>
     </div>
   );

@@ -19,6 +19,7 @@ app.get("/", async (c) => {
             id: true,
             username: true,
             name: true,
+            avatar: true,
           },
         },
         likes: {
@@ -76,6 +77,7 @@ app.post("/", authMiddleware, async (c) => {
             id: true,
             username: true,
             name: true,
+            avatar: true,
           },
         },
         likes: {

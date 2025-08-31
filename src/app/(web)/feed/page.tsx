@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { CreatePost } from "@/app/(web)/feed/components/create-post";
 import { PostList } from "@/app/(web)/feed/components/post-list";
 import { Button } from "@/components/ui/button";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { useLogout } from "@/hooks/use-auth";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -64,9 +65,7 @@ export default function FeedPage() {
           <h1 className="text-2xl font-bold text-gray-900">Feed</h1>
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                {user.name.charAt(0).toUpperCase()}
-              </div>
+              <UserAvatar user={user} size="md" />
               <span className="text-gray-700">@{user.username}</span>
             </div>
             <Button

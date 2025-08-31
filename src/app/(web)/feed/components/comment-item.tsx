@@ -4,6 +4,7 @@ import { Edit2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -66,9 +67,7 @@ export function CommentItem({ comment, postId }: CommentItemProps) {
   if (isEditing) {
     return (
       <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-        <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-semibold flex-shrink-0">
-          {comment.user.name.charAt(0).toUpperCase()}
-        </div>
+        <UserAvatar user={comment.user} size="sm" />
         <div className="flex-1 space-y-2">
           <Textarea
             value={editContent}
@@ -100,9 +99,7 @@ export function CommentItem({ comment, postId }: CommentItemProps) {
 
   return (
     <div className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-      <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-semibold flex-shrink-0">
-        {comment.user.name.charAt(0).toUpperCase()}
-      </div>
+      <UserAvatar user={comment.user} size="sm" />
       <div className="flex-1 min-w-0">
         <div className="flex items-center space-x-2 mb-1">
           <span className="font-semibold text-sm text-gray-900">

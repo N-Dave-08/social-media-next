@@ -200,7 +200,9 @@ export function ProfileManagement() {
       if (profile.avatar.includes("?v=")) {
         return profile.avatar;
       }
-      return `${profile.avatar}&v=${Date.now()}`;
+      // Use ? for first query parameter, & for subsequent ones
+      const separator = profile.avatar.includes("?") ? "&" : "?";
+      return `${profile.avatar}${separator}v=${Date.now()}`;
     }
     return undefined;
   };

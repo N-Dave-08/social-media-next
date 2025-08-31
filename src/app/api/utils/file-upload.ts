@@ -1,8 +1,10 @@
-import { existsSync } from "node:fs";
-import { mkdir, unlink, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import sharp from "sharp";
 import { v4 as uuidv4 } from "uuid";
+import {
+  uploadAvatarToS3,
+  deleteAvatarFromS3,
+  extractS3KeyFromUrl,
+} from "@/lib/aws-s3";
 
 export const processAvatarUpload = async (
   avatarFile: File,
@@ -43,12 +45,6 @@ export const processAvatarUpload = async (
   const uuid = uuidv4();
   const fileName = `avatar_${userId}_${timestamp}_${uuid}.jpg`;
 
-  // Create avatars directory if it doesn't exist
-  const avatarsDir = join(process.cwd(), "public", "avatars");
-  if (!existsSync(avatarsDir)) {
-    await mkdir(avatarsDir, { recursive: true });
-  }
-
   // Process image with Sharp to strip EXIF data and optimize
   const arrayBuffer = await avatarFile.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
@@ -72,29 +68,27 @@ export const processAvatarUpload = async (
     throw new Error("Failed to process image. Please try a different image.");
   }
 
-  // Save the processed file to the avatars directory
-  const filePath = join(avatarsDir, fileName);
-  await writeFile(filePath, processedImageBuffer);
+  // Upload to S3
+  const uploadResult = await uploadAvatarToS3(
+    processedImageBuffer,
+    fileName,
+    "image/jpeg",
+  );
 
-  // Store the public URL path with cache busting
-  const avatarUrl = `/api/avatars/${fileName}?v=${timestamp}`;
-
-  return { fileName, avatarUrl };
+  return {
+    fileName: uploadResult.fileName,
+    avatarUrl: uploadResult.avatarUrl,
+  };
 };
 
 export const deleteAvatarFile = async (avatarUrl: string): Promise<void> => {
   try {
-    // Extract filename from URL (remove /api/avatars/ prefix and query params)
-    const urlParts = avatarUrl.split("?")[0]; // Remove query params
-    const filename = urlParts.replace("/api/avatars/", "");
-    if (filename) {
-      const filePath = join(process.cwd(), "public", "avatars", filename);
-      if (existsSync(filePath)) {
-        await unlink(filePath);
-      }
+    const s3Key = extractS3KeyFromUrl(avatarUrl);
+    if (s3Key) {
+      await deleteAvatarFromS3(s3Key);
     }
-  } catch (fileError) {
-    // Log error but don't fail the request
-    console.error("Failed to delete avatar file:", fileError);
+  } catch (error) {
+    console.error("Failed to delete avatar from S3:", error);
+    // Don't throw error as this is cleanup operation
   }
 };

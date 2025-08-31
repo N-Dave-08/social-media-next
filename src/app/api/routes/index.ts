@@ -17,7 +17,6 @@ import commentUpdate from "./posts/comments/update";
 import postLike from "./posts/like";
 import test from "./test";
 import avatarDelete from "./users/avatar/delete";
-import avatarServe from "./users/avatar/serve";
 import avatarUpload from "./users/avatar/upload";
 import userChangePassword from "./users/change-password";
 import userProfile from "./users/profile";
@@ -57,9 +56,6 @@ app.route("/users", userUpdateProfile);
 app.route("/users", userChangePassword);
 app.route("/users", avatarUpload);
 app.route("/users", avatarDelete);
-
-// Avatar serve route (no auth required)
-app.route("/", avatarServe);
 
 // Admin routes (require admin)
 app.route("/", adminUsers);

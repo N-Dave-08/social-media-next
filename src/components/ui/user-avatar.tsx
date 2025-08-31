@@ -19,7 +19,9 @@ export function UserAvatar({ user, size = "md", className }: UserAvatarProps) {
       if (user.avatar.includes("?v=")) {
         return user.avatar;
       }
-      return `${user.avatar}&v=${Date.now()}`;
+      // Use ? for first query parameter, & for subsequent ones
+      const separator = user.avatar.includes("?") ? "&" : "?";
+      return `${user.avatar}${separator}v=${Date.now()}`;
     }
     return undefined;
   };

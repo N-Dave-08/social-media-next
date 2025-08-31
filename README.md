@@ -17,16 +17,16 @@ The app includes a complete avatar management system:
 
 ### How it works:
 1. **Upload**: Users can upload avatar images (JPG, PNG, GIF, WebP)
-2. **Storage**: Images are stored in `public/avatars/` directory
-3. **Serving**: Images are served through `/api/avatars/:filename` endpoint
-4. **Database**: Avatar URLs are stored as `/api/avatars/filename.ext`
-5. **Cleanup**: Files are automatically deleted when avatars are removed
+2. **Storage**: Images are stored in AWS S3 bucket
+3. **Serving**: Images are served directly from S3/CloudFront CDN
+4. **Database**: Avatar URLs are stored as S3/CloudFront URLs
+5. **Cleanup**: Files are automatically deleted from S3 when avatars are removed
 
 ### File handling:
 - **Supported formats**: JPG, PNG, GIF, WebP (converted to optimized JPEG)
 - **Max size**: 2MB per image (optimized for performance)
-- **Storage location**: `public/avatars/` (gitignored)
-- **URL format**: `/api/avatars/avatar_userId_timestamp_uuid.jpg?v=timestamp`
+- **Storage location**: AWS S3 bucket with CloudFront CDN
+- **URL format**: `https://your-bucket.s3.region.amazonaws.com/avatars/filename.jpg` or CloudFront URL
 - **File naming**: Secure UUID-based naming with timestamp
 - **Image processing**: Resized to 400x400px, EXIF stripped, optimized JPEG
 

@@ -4,6 +4,17 @@ import { Edit2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useDeleteComment, useUpdateComment } from "@/hooks/use-posts";
 import type { Comment } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
@@ -49,9 +60,7 @@ export function CommentItem({ comment, postId }: CommentItemProps) {
   };
 
   const handleDelete = () => {
-    if (confirm("Are you sure you want to delete this comment?")) {
-      deleteCommentMutation.mutate({ commentId: comment.id, postId });
-    }
+    deleteCommentMutation.mutate({ commentId: comment.id, postId });
   };
 
   if (isEditing) {
@@ -120,16 +129,38 @@ export function CommentItem({ comment, postId }: CommentItemProps) {
               <Edit2 className="w-3 h-3 mr-1" />
               Edit
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 px-2 text-xs text-red-500 hover:text-red-700"
-              onClick={handleDelete}
-              disabled={deleteCommentMutation.isPending}
-            >
-              <Trash2 className="w-3 h-3 mr-1" />
-              Delete
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs text-red-500 hover:text-red-700"
+                  disabled={deleteCommentMutation.isPending}
+                >
+                  <Trash2 className="w-3 h-3 mr-1" />
+                  Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Comment</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete this comment? This action
+                    cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    className="bg-red-600 hover:bg-red-700"
+                    disabled={deleteCommentMutation.isPending}
+                  >
+                    {deleteCommentMutation.isPending ? "Deleting..." : "Delete"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         )}
       </div>

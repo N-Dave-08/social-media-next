@@ -5,12 +5,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Crown,
+  Eye,
   Search,
   UserCheck,
   Users,
   UserX,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,6 +41,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { adminApi, type User } from "@/lib/api";
 
 export function UserManagement() {
@@ -47,6 +57,8 @@ export function UserManagement() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("ALL");
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
   const queryClient = useQueryClient();
 
   // Debounce search term
@@ -97,6 +109,11 @@ export function UserManagement() {
     setCurrentPage(1); // Reset to first page when filtering
   };
 
+  const handleViewProfile = (user: User) => {
+    setSelectedUser(user);
+    setIsProfileDialogOpen(true);
+  };
+
   const users = usersResponse?.users || [];
   const pagination = usersResponse?.pagination;
 
@@ -116,6 +133,48 @@ export function UserManagement() {
       default:
         return "secondary" as const;
     }
+  };
+
+  // Memoized avatar component to prevent flashing
+  const UserAvatar = ({
+    user,
+    size = "md",
+  }: {
+    user: User;
+    size?: "sm" | "md" | "lg";
+  }) => {
+    const avatarUrl = useMemo(() => user.avatar || undefined, [user.avatar]);
+    const fallback = useMemo(
+      () => user.name.charAt(0).toUpperCase(),
+      [user.name],
+    );
+
+    const sizeClasses = {
+      sm: "w-8 h-8",
+      md: "w-10 h-10",
+      lg: "w-16 h-16",
+    };
+
+    const textSizes = {
+      sm: "text-sm",
+      md: "text-base",
+      lg: "text-lg",
+    };
+
+    return (
+      <Avatar className={sizeClasses[size]}>
+        <AvatarImage
+          src={avatarUrl}
+          alt={`${user.name}'s avatar`}
+          className="object-cover"
+        />
+        <AvatarFallback
+          className={`bg-gradient-to-r from-purple-400 to-pink-400 text-white font-bold ${textSizes[size]}`}
+        >
+          {fallback}
+        </AvatarFallback>
+      </Avatar>
+    );
   };
 
   return (
@@ -191,9 +250,7 @@ export function UserManagement() {
                   <TableRow key={user.id}>
                     <TableCell>
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full flex items-center justify-center text-white font-bold">
-                          {user.name.charAt(0).toUpperCase()}
-                        </div>
+                        <UserAvatar user={user} size="md" />
                         <div>
                           <div className="font-medium text-gray-900">
                             {user.name}
@@ -227,6 +284,122 @@ export function UserManagement() {
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
+                        <Dialog
+                          open={
+                            isProfileDialogOpen && selectedUser?.id === user.id
+                          }
+                          onOpenChange={(open) => {
+                            if (!open) {
+                              setIsProfileDialogOpen(false);
+                              setSelectedUser(null);
+                            }
+                          }}
+                        >
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewProfile(user)}
+                            >
+                              <Eye className="w-4 h-4 mr-1" />
+                              View Profile
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-md">
+                            <DialogHeader>
+                              <DialogTitle>User Profile</DialogTitle>
+                              <DialogDescription>
+                                Detailed information about {user.name}
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div className="flex items-center space-x-4">
+                                <UserAvatar user={user} size="lg" />
+                                <div>
+                                  <h3 className="text-lg font-semibold text-gray-900">
+                                    {user.name}
+                                  </h3>
+                                  <p className="text-gray-600">
+                                    @{user.username}
+                                  </p>
+                                  <Badge
+                                    variant={getRoleBadgeVariant(user.role)}
+                                    className="flex items-center space-x-1 w-fit mt-1"
+                                  >
+                                    {getRoleIcon(user.role)}
+                                    <span>{user.role}</span>
+                                  </Badge>
+                                </div>
+                              </div>
+
+                              <div className="space-y-3">
+                                <div>
+                                  <div className="text-sm font-medium text-gray-700">
+                                    Email
+                                  </div>
+                                  <p className="text-gray-900">{user.email}</p>
+                                </div>
+
+                                {user.bio && (
+                                  <div>
+                                    <div className="text-sm font-medium text-gray-700">
+                                      Bio
+                                    </div>
+                                    <p className="text-gray-900">{user.bio}</p>
+                                  </div>
+                                )}
+
+                                <div>
+                                  <div className="text-sm font-medium text-gray-700">
+                                    Member Since
+                                  </div>
+                                  <p className="text-gray-900">
+                                    {new Date(
+                                      user.createdAt,
+                                    ).toLocaleDateString("en-US", {
+                                      year: "numeric",
+                                      month: "long",
+                                      day: "numeric",
+                                    })}
+                                  </p>
+                                </div>
+
+                                <div>
+                                  <div className="text-sm font-medium text-gray-700">
+                                    Activity Stats
+                                  </div>
+                                  <div className="grid grid-cols-3 gap-4 mt-2">
+                                    <div className="text-center">
+                                      <div className="text-lg font-semibold text-gray-900">
+                                        {user._count?.posts || 0}
+                                      </div>
+                                      <div className="text-xs text-gray-500">
+                                        Posts
+                                      </div>
+                                    </div>
+                                    <div className="text-center">
+                                      <div className="text-lg font-semibold text-gray-900">
+                                        {user._count?.likes || 0}
+                                      </div>
+                                      <div className="text-xs text-gray-500">
+                                        Likes
+                                      </div>
+                                    </div>
+                                    <div className="text-center">
+                                      <div className="text-lg font-semibold text-gray-900">
+                                        {user._count?.comments || 0}
+                                      </div>
+                                      <div className="text-xs text-gray-500">
+                                        Comments
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+
                         {user.role === "USER" && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>

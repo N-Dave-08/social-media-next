@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { refreshAccessToken } from "@/lib/token-utils";
+import { refreshAccessToken } from "@/lib/auth/token-utils";
 
 type Variables = {
   userId: string;

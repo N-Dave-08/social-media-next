@@ -1,5 +1,5 @@
 import type { Context, Next } from "hono";
-import { verifyToken } from "@/lib/token-utils";
+import { verifyToken } from "@/lib/auth/token-utils";
 
 type Variables = {
   userId: string;

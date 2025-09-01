@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { Hono } from "hono";
-import { prisma } from "@/lib/db";
-import { generateTokenPair } from "@/lib/token-utils";
+import { prisma } from "@/lib/database/db";
+import { generateTokenPair } from "@/lib/auth/token-utils";
 import { loginSchema } from "../../schemas/auth";
 
 type Variables = {

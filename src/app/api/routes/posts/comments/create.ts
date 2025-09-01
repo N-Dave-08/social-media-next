@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
+import { prisma } from "@/lib/database/db";
 import { authMiddleware } from "../../../middleware/auth";
 import { commentSchema } from "../../../schemas/comments";
 

@@ -39,6 +39,9 @@ export const useUpdateProfile = () => {
 
       // Invalidate related queries
       queryClient.invalidateQueries({ queryKey: ["profile"] });
+
+      // Invalidate posts to update author information
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
     },
   });
 };
@@ -84,6 +87,9 @@ export const useUploadAvatar = () => {
 
       // Invalidate related queries
       queryClient.invalidateQueries({ queryKey: ["profile"] });
+
+      // Invalidate posts to update author avatars
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
     },
   });
 };
@@ -114,6 +120,9 @@ export const useRemoveAvatar = () => {
 
       // Invalidate related queries
       queryClient.invalidateQueries({ queryKey: ["profile"] });
+
+      // Invalidate posts to update author avatars
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
     },
   });
 };

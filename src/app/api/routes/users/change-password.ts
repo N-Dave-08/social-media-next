@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { Hono } from "hono";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
+import { prisma } from "@/lib/database/db";
 import { authMiddleware } from "../../middleware/auth";
 import { changePasswordSchema } from "../../schemas/auth";
 

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { revokeAllRefreshTokens } from "@/lib/token-utils";
+import { revokeAllRefreshTokens } from "@/lib/auth/token-utils";
 import { authMiddleware } from "../../middleware/auth";
 
 type Variables = {

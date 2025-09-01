@@ -4,7 +4,7 @@ import {
   uploadAvatarToS3,
   deleteAvatarFromS3,
   extractS3KeyFromUrl,
-} from "@/lib/aws-s3";
+} from "@/lib/storage/aws-s3";
 
 export const processAvatarUpload = async (
   avatarFile: File,

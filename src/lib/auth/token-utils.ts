@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { prisma } from "./db";
+import { prisma } from "../database/db";
 
 export interface TokenPayload {
   userId: string;

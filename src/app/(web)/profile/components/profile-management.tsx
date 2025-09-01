@@ -196,13 +196,7 @@ export function ProfileManagement() {
   const getAvatarSrc = () => {
     if (avatarPreview && avatarPreview.trim() !== "") return avatarPreview;
     if (profile?.avatar && profile.avatar.trim() !== "") {
-      // Add cache busting if not already present
-      if (profile.avatar.includes("?v=")) {
-        return profile.avatar;
-      }
-      // Use ? for first query parameter, & for subsequent ones
-      const separator = profile.avatar.includes("?") ? "&" : "?";
-      return `${profile.avatar}${separator}v=${Date.now()}`;
+      return profile.avatar;
     }
     return undefined;
   };

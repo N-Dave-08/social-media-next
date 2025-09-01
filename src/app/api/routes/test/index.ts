@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { prisma } from "@/lib/db";
+import { prisma } from "@/lib/database/db";
 
 type Variables = {
   userId: string;

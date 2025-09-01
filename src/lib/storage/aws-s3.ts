@@ -29,7 +29,7 @@ export const uploadAvatarToS3 = async (
   fileName: string,
   contentType: string,
 ): Promise<UploadResult> => {
-  const s3Key = fileName; // Remove avatars/ prefix since CloudFront origin path handles it
+  const s3Key = `avatars/${fileName}`; // Keep organized folder structure in S3
 
   const uploadCommand = new PutObjectCommand({
     Bucket: BUCKET_NAME,
@@ -37,6 +37,7 @@ export const uploadAvatarToS3 = async (
     Body: fileBuffer,
     ContentType: contentType,
     CacheControl: "public, max-age=31536000", // Cache for 1 year
+    ContentDisposition: "inline", // Ensure images display in browser
     // Removed ACL since bucket has ACLs disabled
   });
 

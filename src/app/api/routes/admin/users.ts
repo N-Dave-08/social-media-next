@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { Hono } from "hono";
-import { prisma } from "@/lib/db";
+import { prisma } from "@/lib/database/db";
 import { adminMiddleware } from "../../middleware/admin";
 
 type Variables = {
@@ -46,6 +46,8 @@ app.get("/admin/users", adminMiddleware, async (c) => {
         email: true,
         username: true,
         name: true,
+        bio: true,
+        avatar: true,
         role: true,
         createdAt: true,
         _count: {

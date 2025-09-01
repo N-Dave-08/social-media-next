@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { prisma } from "@/lib/db";
+import { prisma } from "@/lib/database/db";
 import { adminMiddleware } from "../../middleware/admin";
 
 type Variables = {

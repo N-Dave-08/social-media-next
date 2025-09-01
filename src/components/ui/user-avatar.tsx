@@ -15,13 +15,7 @@ interface UserAvatarProps {
 export function UserAvatar({ user, size = "md", className }: UserAvatarProps) {
   const getAvatarSrc = () => {
     if (user?.avatar && user.avatar.trim() !== "") {
-      // Add cache busting if not already present
-      if (user.avatar.includes("?v=")) {
-        return user.avatar;
-      }
-      // Use ? for first query parameter, & for subsequent ones
-      const separator = user.avatar.includes("?") ? "&" : "?";
-      return `${user.avatar}${separator}v=${Date.now()}`;
+      return user.avatar;
     }
     return undefined;
   };

@@ -1,8 +1,8 @@
 // Simple test file to verify AWS S3 configuration
 // Run with: npx tsx src/lib/aws-s3.test.ts
 
+import { resolve } from "node:path";
 import { config } from "dotenv";
-import { resolve } from "path";
 
 // Removed unused imports since this is just a configuration test
 

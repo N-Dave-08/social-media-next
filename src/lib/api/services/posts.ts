@@ -1,4 +1,4 @@
-import { type AxiosResponse } from "axios";
+import type { AxiosResponse } from "axios";
 import api from "../client";
 import type { Post, Comment, Pagination, CreatePostData } from "../types";
 

@@ -2,9 +2,6 @@
 
 import { Edit2, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +13,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { useDeleteComment, useUpdateComment } from "@/hooks/use-posts";
 import type { Comment } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";

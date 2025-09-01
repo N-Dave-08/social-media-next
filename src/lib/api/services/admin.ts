@@ -1,6 +1,6 @@
 import type { AxiosResponse } from "axios";
 import api from "../client";
-import type { User, UsersResponse, GetUsersParams } from "../types";
+import type { GetUsersParams, User, UsersResponse } from "../types";
 
 // Admin API
 export const adminApi = {

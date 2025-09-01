@@ -2,8 +2,8 @@ import type { AxiosResponse } from "axios";
 import api from "../client";
 import type {
   AuthResponse,
-  RefreshResponse,
   LoginData,
+  RefreshResponse,
   SignupData,
 } from "../types";
 

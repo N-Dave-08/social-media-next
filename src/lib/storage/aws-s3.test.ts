@@ -3,6 +3,7 @@
 
 import { config } from "dotenv";
 import { resolve } from "path";
+
 // Removed unused imports since this is just a configuration test
 
 // Load environment variables from .env.local

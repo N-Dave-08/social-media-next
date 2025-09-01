@@ -1,6 +1,6 @@
 import type { AxiosResponse } from "axios";
 import api from "../client";
-import type { Post, Comment, Pagination, CreatePostData } from "../types";
+import type { Comment, CreatePostData, Pagination, Post } from "../types";
 
 // Posts API
 export const postsApi = {

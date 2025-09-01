@@ -1,6 +1,6 @@
 import type { AxiosResponse } from "axios";
 import api from "../client";
-import type { User, UpdateProfileData, ChangePasswordData } from "../types";
+import type { ChangePasswordData, UpdateProfileData, User } from "../types";
 
 // User API
 export const userApi = {

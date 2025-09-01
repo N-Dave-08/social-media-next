@@ -1,9 +1,9 @@
 import sharp from "sharp";
 import { v4 as uuidv4 } from "uuid";
 import {
-  uploadAvatarToS3,
   deleteAvatarFromS3,
   extractS3KeyFromUrl,
+  uploadAvatarToS3,
 } from "@/lib/storage/aws-s3";
 
 export const processAvatarUpload = async (

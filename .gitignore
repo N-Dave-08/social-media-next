@@ -42,4 +42,24 @@ next-env.d.ts
 
 /src/generated/prisma
 
+# Terraform sensitive files
+*.tfvars
+*.tfvars.json
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfstate.*
+
+# Environment files (already covered by .env*)
+.env
+.env.local
+.env.production
+.env.staging
+
+# AWS credentials
+.aws/
+aws-credentials.txt
+
+
 

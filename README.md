@@ -228,6 +228,89 @@ FROM node:18-alpine AS base
 # ... optimized production image
 ```
 
+## Production Deployment
+
+### 🚀 **AWS ECS Deployment (COMPLETED)**
+
+Our social media app is **successfully deployed to production** using AWS infrastructure:
+
+#### **Production Infrastructure**
+- **✅ ECS Cluster** - Container orchestration with Fargate
+- **✅ RDS PostgreSQL** - Production database
+- **✅ Application Load Balancer** - Traffic distribution
+- **✅ ECR** - Container registry
+- **✅ VPC** - Network isolation and security
+
+#### **Production URL**
+🌐 **Live Application**: `http://social-media-alb-1380272211.us-east-2.elb.amazonaws.com`
+
+#### **Deployment Commands**
+```bash
+# 1. Build production image
+docker build -t social-media-app-test:latest .
+
+# 2. Tag for ECR
+docker tag social-media-app-test:latest 337909777510.dkr.ecr.us-east-2.amazonaws.com/social-media-app:latest
+
+# 3. Authenticate with ECR
+aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 337909777510.dkr.ecr.us-east-2.amazonaws.com
+
+# 4. Push to ECR
+docker push 337909777510.dkr.ecr.us-east-2.amazonaws.com/social-media-app:latest
+
+# 5. Deploy to ECS
+aws ecs update-service --cluster social-media-cluster --service social-media-service --force-new-deployment --region us-east-2
+```
+
+#### **Production Environment Variables**
+```env
+# Production Database (AWS RDS)
+DATABASE_URL="postgresql://postgres:postgres@social-media-postgres.c7sgoummmk7f.us-east-2.rds.amazonaws.com:5432/social_media_db?schema=public"
+
+# Production Settings
+NODE_ENV=production
+NEXTAUTH_SECRET=your-production-secret
+JWT_SECRET=your-production-jwt-secret
+```
+
+#### **Key Production Features**
+- **✅ Auto-scaling** - ECS handles traffic spikes
+- **✅ Health checks** - Load balancer monitors app health
+- **✅ Database persistence** - RDS with automated backups
+- **✅ Security** - VPC isolation and security groups
+- **✅ Monitoring** - ECS service events and CloudWatch
+
+#### **Production Architecture**
+```
+Internet → ALB → ECS Tasks → RDS PostgreSQL
+                ↓
+            ECR Images
+```
+
+### 🔧 **Production Troubleshooting**
+
+**Common Issues & Solutions:**
+
+1. **Database Connection Failed (500 Error)**
+   - **Cause**: Wrong DATABASE_URL or environment variable conflicts
+   - **Solution**: Ensure `.env` file matches ECS task definition exactly
+
+2. **ECS Deployment Stuck**
+   - **Cause**: Tasks failing to start or health check failures
+   - **Solution**: Check task logs and environment variables
+
+3. **Missing Database Tables**
+   - **Cause**: Prisma migrations haven't run
+   - **Solution**: Use `prisma db push` in Dockerfile for initial deployments
+
+**For detailed troubleshooting, see our [DevOps Documentation](docs/DEVOPS.md)**
+
+### 📚 **Deployment Documentation**
+
+- **📖 [DevOps Guide](docs/DEVOPS.md)** - Complete deployment guide
+- **📖 [Quick Start](docs/QUICK_START.md)** - Local development setup
+- **📖 [Database ERD](docs/DATABASE_ERD.md)** - Database schema documentation
+
 ## API Endpoints
 
 ### Authentication

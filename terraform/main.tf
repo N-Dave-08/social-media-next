@@ -96,6 +96,32 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private.id
 }
 
+# NAT Gateway for private subnets to access internet
+resource "aws_eip" "nat" {
+  domain = "vpc"
+  tags = {
+    Name = "social-media-nat-eip"
+  }
+}
+
+resource "aws_nat_gateway" "main" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public[0].id
+
+  tags = {
+    Name = "social-media-nat-gateway"
+  }
+
+  depends_on = [aws_internet_gateway.main]
+}
+
+# Update private route table to route through NAT Gateway
+resource "aws_route" "private_nat_gateway" {
+  route_table_id         = aws_route_table.private.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.main.id
+}
+
 # Security Group for Load Balancer
 resource "aws_security_group" "alb" {
   name        = "social-media-alb-sg"
@@ -234,7 +260,7 @@ resource "aws_db_instance" "main" {
 
   # Engine configuration - USE KNOWN WORKING VERSION
   engine         = "postgres"
-  engine_version = "17.6"  # Changed to 14.10 (widely available)
+  engine_version = "17.6"  # Keep current version to avoid downgrade issues
   instance_class = "db.t3.micro"
 
   # Storage configuration
@@ -300,7 +326,256 @@ resource "aws_iam_role_policy_attachment" "rds_monitoring" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
 }
 
-# Output the database endpoint
+# Application Load Balancer
+resource "aws_lb" "main" {
+  name               = "social-media-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb.id]
+  subnets            = aws_subnet.public[*].id
+
+  enable_deletion_protection = false
+
+  tags = {
+    Name = "social-media-alb"
+  }
+}
+
+# ALB Target Group
+resource "aws_lb_target_group" "main" {
+  name        = "social-media-tg"
+  port        = 3000
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    interval            = 30
+    matcher             = "200"
+    path                = "/api/health"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = 5
+    unhealthy_threshold = 2
+  }
+
+  tags = {
+    Name = "social-media-tg"
+  }
+}
+
+# ALB Listener
+resource "aws_lb_listener" "main" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.main.arn
+  }
+}
+
+# ECS Task Definition
+resource "aws_ecs_task_definition" "main" {
+  family                   = "social-media-app"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = 256
+  memory                   = 512
+
+  execution_role_arn = aws_iam_role.ecs_execution.arn
+  task_role_arn      = aws_iam_role.ecs_task.arn
+
+  container_definitions = jsonencode([
+    {
+      name  = "social-media-app"
+      image = "${var.ecr_repository_url}:latest"
+
+      portMappings = [
+        {
+          containerPort = 3000
+          protocol      = "tcp"
+        }
+      ]
+
+      environment = [
+        {
+          name  = "NODE_ENV"
+          value = "production"
+        },
+        {
+          name  = "DATABASE_URL"
+          value = "postgresql://postgres:${var.db_password}@${aws_db_instance.main.endpoint}/${aws_db_instance.main.db_name}?schema=public"
+        },
+        {
+          name  = "NEXTAUTH_SECRET"
+          value = var.nextauth_secret
+        },
+        {
+          name  = "NEXTAUTH_URL"
+          value = "http://${aws_lb.main.dns_name}"
+        },
+        {
+          name  = "JWT_SECRET"
+          value = var.jwt_secret
+        },
+        {
+          name  = "AWS_REGION"
+          value = var.aws_region
+        },
+        {
+          name  = "AWS_S3_BUCKET_NAME"
+          value = var.s3_bucket_name
+        },
+        {
+          name  = "CLOUDFRONT_DOMAIN"
+          value = var.cloudfront_domain
+        },
+        {
+          name  = "PORT"
+          value = "3000"
+        },
+        {
+          name  = "HOSTNAME"
+          value = "0.0.0.0"
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.main.name
+          awslogs-region        = var.aws_region
+          awslogs-stream-prefix = "ecs"
+        }
+      }
+    }
+  ])
+
+  tags = {
+    Name = "social-media-task-def"
+  }
+}
+
+# ECS Service
+resource "aws_ecs_service" "main" {
+  name            = "social-media-service"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.main.arn
+  desired_count   = 2
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = aws_subnet.private[*].id
+    security_groups  = [aws_security_group.ecs_tasks.id]
+    assign_public_ip = false
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.main.arn
+    container_name   = "social-media-app"
+    container_port   = 3000
+  }
+
+  depends_on = [aws_lb_listener.main]
+
+  tags = {
+    Name = "social-media-service"
+  }
+}
+
+# IAM Role for ECS Execution
+resource "aws_iam_role" "ecs_execution" {
+  name = "social-media-ecs-execution-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+# Attach ECS execution policy
+resource "aws_iam_role_policy_attachment" "ecs_execution" {
+  role       = aws_iam_role.ecs_execution.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+# IAM Role for ECS Tasks
+resource "aws_iam_role" "ecs_task" {
+  name = "social-media-ecs-task-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+# Attach basic AWS policies for the task role
+resource "aws_iam_role_policy_attachment" "ecs_task_s3" {
+  role       = aws_iam_role.ecs_task.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+}
+
+# CloudWatch Log Group
+resource "aws_cloudwatch_log_group" "main" {
+  name              = "/ecs/social-media-app"
+  retention_in_days = 7
+
+  tags = {
+    Name = "social-media-logs"
+  }
+}
+
+# Auto Scaling Target
+resource "aws_appautoscaling_target" "main" {
+  max_capacity       = 4
+  min_capacity       = 1
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.main.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+# Auto Scaling Policy
+resource "aws_appautoscaling_policy" "main" {
+  name               = "social-media-scaling-policy"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.main.resource_id
+  scalable_dimension = aws_appautoscaling_target.main.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.main.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+    target_value = 70.0
+  }
+}
+
+# Output the Load Balancer URL
+output "load_balancer_url" {
+  description = "The URL of the load balancer"
+  value       = "http://${aws_lb.main.dns_name}"
+}
+
 output "database_endpoint" {
   description = "The connection endpoint for the database"
   value       = aws_db_instance.main.endpoint

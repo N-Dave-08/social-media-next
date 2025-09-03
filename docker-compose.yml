@@ -32,7 +32,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - POSTGRES_DB=${POSTGRES_DB:-social_media_db}
     ports:
-      - "51214:5432"  # Map host port 51214 to container port 5432
+      - "5433:5432"  # Changed from 51214 to 5433 to avoid conflicts
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:

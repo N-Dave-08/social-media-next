@@ -33,3 +33,9 @@ variable "cloudfront_domain" {
   type        = string
   default     = "d1ch31psf2hczd.cloudfront.net"
 }
+
+variable "db_password" {
+  description = "Password for the PostgreSQL database"
+  type        = string
+  sensitive   = true
+}

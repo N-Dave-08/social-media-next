@@ -9,6 +9,7 @@ import authLogoutAll from "./auth/logout-all";
 import authRefresh from "./auth/refresh";
 // Import route modules
 import authSignup from "./auth/signup";
+import health from "./health";
 import posts from "./posts";
 import comments from "./posts/comments";
 import commentCreate from "./posts/comments/create";
@@ -32,6 +33,9 @@ const app = new Hono<{ Variables: Variables }>().basePath("/api");
 // Global middleware
 app.use("*", corsMiddleware);
 app.use("*", logger());
+
+// Health check route (no auth required) - register first for priority
+app.route("/", health);
 
 // Auth routes (no auth required)
 app.route("/auth/signup", authSignup);

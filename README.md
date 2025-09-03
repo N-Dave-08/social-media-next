@@ -234,6 +234,15 @@ FROM node:18-alpine AS base
 
 Our social media app is **successfully deployed to production** using AWS infrastructure:
 
+#### **🌐 Production Website**
+**Live Application**: [http://social-media-alb-1380272211.us-east-2.elb.amazonaws.com](http://social-media-alb-1380272211.us-east-2.elb.amazonaws.com)
+
+**Status**: ✅ **FULLY OPERATIONAL**
+- Website loads successfully
+- Database connection established
+- User signup functionality working
+- All API endpoints responding correctly
+
 #### **Production Infrastructure**
 - **✅ ECS Cluster** - Container orchestration with Fargate
 - **✅ RDS PostgreSQL** - Production database

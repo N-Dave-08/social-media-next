@@ -7,6 +7,16 @@
 **Infrastructure**: AWS ECS + RDS + ALB + ECR  
 **Result**: Social media app fully functional in production
 
+### **🌐 Production Website**
+**Live Application**: [http://social-media-alb-1380272211.us-east-2.elb.amazonaws.com](http://social-media-alb-1380272211.us-east-2.elb.amazonaws.com)
+
+**Verification**: ✅ **FULLY OPERATIONAL**
+- Website loads successfully
+- Database connection established
+- User signup functionality working
+- All API endpoints responding correctly
+- No more 500 Internal Server Errors
+
 ## 🏆 What We Accomplished
 
 ### 1. Production Infrastructure Setup ✅

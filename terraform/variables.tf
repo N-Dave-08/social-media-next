@@ -39,3 +39,15 @@ variable "db_password" {
   type        = string
   sensitive   = true
 }
+
+variable "admin_email" {
+  description = "Email for the admin user"
+  type        = string
+  sensitive   = true
+}
+
+variable "admin_password" {
+  description = "Password for the admin user"
+  type        = string
+  sensitive   = true
+}

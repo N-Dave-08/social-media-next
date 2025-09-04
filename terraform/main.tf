@@ -441,6 +441,14 @@ resource "aws_ecs_task_definition" "main" {
         {
           name  = "HOSTNAME"
           value = "0.0.0.0"
+        },
+        {
+          name  = "ADMIN_EMAIL"
+          value = var.admin_email
+        },
+        {
+          name  = "ADMIN_PASSWORD"
+          value = var.admin_password
         }
       ]
 
@@ -467,6 +475,7 @@ resource "aws_ecs_service" "main" {
   task_definition = aws_ecs_task_definition.main.arn
   desired_count   = 2
   launch_type     = "FARGATE"
+  enable_execute_command = true
 
   network_configuration {
     subnets          = aws_subnet.private[*].id

@@ -290,11 +290,73 @@ JWT_SECRET=your-production-jwt-secret
 - **✅ Monitoring** - ECS service events and CloudWatch
 
 #### **Production Architecture**
+
+## 🏗️ AWS Ecosystem Architecture
+
+Our production deployment uses a comprehensive AWS infrastructure:
+
+### 🌐 Complete Infrastructure Diagram
+
+```mermaid
+graph TB
+    subgraph "🌐 Internet"
+        User[👤 Users]
+        Internet[🌐 Internet Gateway]
+    end
+    
+    subgraph "🏗️ AWS Infrastructure"
+        subgraph "📡 Load Balancing"
+            ALB[🔀 Application Load Balancer<br/>social-media-alb<br/>Port 80]
+        end
+        
+        subgraph "🖥️ ECS Infrastructure"
+            ECRRepo[📦 ECR Repository<br/>social-media-app]
+            ECSCluster[⚙️ ECS Cluster<br/>social-media-cluster<br/>Fargate]
+            
+            subgraph "🐳 ECS Service"
+                ECSService[🔄 ECS Service<br/>social-media-service]
+                Task1[🏃 Task Instance<br/>Next.js App<br/>Port 3000]
+            end
+        end
+        
+        subgraph "🗄️ Database"
+            RDS[🗄️ RDS PostgreSQL<br/>social-media-postgres]
+        end
+        
+        subgraph "🔒 Security"
+            VPC[🏠 VPC Network]
+            SG[🛡️ Security Groups]
+        end
+        
+        subgraph "🔑 Admin Management"
+            AdminTask[⚡ Database Seeding<br/>Auto Admin Creation]
+        end
+    end
+    
+    %% Traffic Flow
+    User -->|HTTP Requests| Internet
+    Internet --> ALB
+    ALB -->|Target Group| Task1
+    Task1 -->|Database Queries| RDS
+    
+    %% Infrastructure
+    ECRRepo -->|Pull Images| ECSService
+    ECSService --> Task1
+    AdminTask -->|Seed Database| RDS
+    VPC -.-> Task1
+    VPC -.-> RDS
+    SG -.-> ALB
+    SG -.-> Task1
+    SG -.-> RDS
 ```
-Internet → ALB → ECS Tasks → RDS PostgreSQL
-                ↓
-            ECR Images
-```
+
+### 🎯 **Production Highlights**
+- **✅ Auto-scaling ECS Fargate** - Serverless container orchestration
+- **✅ Load-balanced traffic** - High availability with health checks
+- **✅ Secure networking** - VPC isolation with security groups
+- **✅ Automatic admin creation** - Database seeding on deployment
+- **✅ Comprehensive monitoring** - CloudWatch logs and metrics
+- **✅ Zero-downtime deployments** - Rolling updates with health checks
 
 ### 🔧 **Production Troubleshooting**
 

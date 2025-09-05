@@ -299,55 +299,33 @@ Our production deployment uses a comprehensive AWS infrastructure:
 
 ```mermaid
 graph TB
-    subgraph "🌐 Internet"
-        User[👤 Users]
-        Internet[🌐 Internet Gateway]
-    end
+    Users[👤 Users] --> Internet[🌐 Internet]
+    Internet --> CloudFront[☁️ CloudFront CDN<br/>d1ch31psf2hczd.cloudfront.net]
+    Internet --> ALB[🔀 Application Load Balancer<br/>social-media-alb]
     
-    subgraph "🏗️ AWS Infrastructure"
-        subgraph "📡 Load Balancing"
-            ALB[🔀 Application Load Balancer<br/>social-media-alb<br/>Port 80]
+    CloudFront --> S3[🪣 S3 Bucket<br/>davesocialmediaapp<br/>Avatar Storage]
+    
+    ALB --> ECS[🐳 ECS Fargate<br/>social-media-cluster<br/>social-media-service]
+    
+    ECS --> RDS[🗄️ RDS PostgreSQL<br/>social-media-postgres<br/>Database]
+    ECS --> S3
+    
+    ECR[📦 ECR Repository<br/>337909777510.dkr.ecr.us-east-2.amazonaws.com] --> ECS
+    
+    subgraph "🏠 VPC - Network Isolation"
+        ALB
+        ECS
+        RDS
+        subgraph "🌐 Public Subnets"
+            ALB
         end
-        
-        subgraph "🖥️ ECS Infrastructure"
-            ECRRepo[📦 ECR Repository<br/>social-media-app]
-            ECSCluster[⚙️ ECS Cluster<br/>social-media-cluster<br/>Fargate]
-            
-            subgraph "🐳 ECS Service"
-                ECSService[🔄 ECS Service<br/>social-media-service]
-                Task1[🏃 Task Instance<br/>Next.js App<br/>Port 3000]
-            end
-        end
-        
-        subgraph "🗄️ Database"
-            RDS[🗄️ RDS PostgreSQL<br/>social-media-postgres]
-        end
-        
-        subgraph "🔒 Security"
-            VPC[🏠 VPC Network]
-            SG[🛡️ Security Groups]
-        end
-        
-        subgraph "🔑 Admin Management"
-            AdminTask[⚡ Database Seeding<br/>Auto Admin Creation]
+        subgraph "🔒 Private Subnets"
+            ECS
+            RDS
         end
     end
     
-    %% Traffic Flow
-    User -->|HTTP Requests| Internet
-    Internet --> ALB
-    ALB -->|Target Group| Task1
-    Task1 -->|Database Queries| RDS
-    
-    %% Infrastructure
-    ECRRepo -->|Pull Images| ECSService
-    ECSService --> Task1
-    AdminTask -->|Seed Database| RDS
-    VPC -.-> Task1
-    VPC -.-> RDS
-    SG -.-> ALB
-    SG -.-> Task1
-    SG -.-> RDS
+    ECS --> CloudWatch[📊 CloudWatch<br/>Logs & Monitoring]
 ```
 
 ### 🎯 **Production Highlights**

@@ -732,156 +732,76 @@ Our production deployment uses a comprehensive AWS infrastructure with the follo
 
 ```mermaid
 graph TB
-    subgraph "🌐 Internet"
-        User[👤 Users]
-        Internet[🌐 Internet Gateway]
-    end
+    Users[👤 Users] --> Internet[🌐 Internet]
+    Internet --> CloudFront[☁️ CloudFront CDN<br/>d1ch31psf2hczd.cloudfront.net]
+    Internet --> ALB[🔀 Application Load Balancer<br/>social-media-alb]
     
-    subgraph "🏗️ AWS Infrastructure"
-        subgraph "📡 Load Balancing"
-            ALB[🔀 Application Load Balancer<br/>social-media-alb<br/>Port 80]
+    CloudFront --> S3[🪣 S3 Bucket<br/>davesocialmediaapp<br/>Avatar Storage]
+    
+    ALB --> ECS[🐳 ECS Fargate<br/>social-media-cluster<br/>social-media-service]
+    
+    ECS --> RDS[🗄️ RDS PostgreSQL<br/>social-media-postgres<br/>Database]
+    ECS --> S3
+    
+    ECR[📦 ECR Repository<br/>337909777510.dkr.ecr.us-east-2.amazonaws.com] --> ECS
+    
+    subgraph "🏠 VPC - Network Isolation"
+        ALB
+        ECS
+        RDS
+        subgraph "🌐 Public Subnets"
+            ALB
         end
-        
-        subgraph "🖥️ ECS Infrastructure"
-            ECRRepo[📦 ECR Repository<br/>social-media-app<br/>337909777510.dkr.ecr.us-east-2.amazonaws.com]
-            ECSCluster[⚙️ ECS Cluster<br/>social-media-cluster<br/>Fargate]
-            
-            subgraph "🐳 ECS Service"
-                ECSService[🔄 ECS Service<br/>social-media-service<br/>Desired: 1, Running: 1]
-                
-                subgraph "📋 Task Definition"
-                    TaskDef[📋 Task Definition<br/>social-media-app:latest<br/>CPU: 256, Memory: 512]
-                    
-                    subgraph "🏃 Running Tasks"
-                        Task1[🏃 Task Instance<br/>Next.js App<br/>Port 3000<br/>Health Check: /api/health]
-                    end
-                end
-            end
-        end
-        
-        subgraph "🗄️ Database Infrastructure"
-            RDS[🗄️ RDS PostgreSQL<br/>social-media-postgres<br/>c7sgoummmk7f.us-east-2.rds.amazonaws.com<br/>Port 5432]
-        end
-        
-        subgraph "📊 Monitoring & Logging"
-            CloudWatch[📊 CloudWatch Logs<br/>/ecs/social-media-app<br/>Task Events & Application Logs]
-        end
-        
-        subgraph "🔒 Security & Networking"
-            VPC[🏠 VPC<br/>Network Isolation]
-            
-            subgraph "Security Groups"
-                ALBSG[🛡️ ALB Security Group<br/>Port 80: 0.0.0.0/0]
-                ECSSG[🛡️ ECS Security Group<br/>Port 3000: from ALB]
-                RDSSG[🛡️ RDS Security Group<br/>Port 5432: from ECS]
-            end
-            
-            subgraph "Subnets"
-                PubSub1[🌐 Public Subnet 1<br/>us-east-2a]
-                PubSub2[🌐 Public Subnet 2<br/>us-east-2b]
-                PrivSub1[🔒 Private Subnet 1<br/>us-east-2a]
-                PrivSub2[🔒 Private Subnet 2<br/>us-east-2b]
-            end
-        end
-        
-        subgraph "🔑 Admin Management"
-            AdminTask[⚡ One-time Seeding Task<br/>database-seeding<br/>Creates Admin User<br/>ADMIN+01@socialmedia.com]
+        subgraph "🔒 Private Subnets"
+            ECS
+            RDS
         end
     end
     
-    subgraph "🔄 Deployment Pipeline"
-        GitRepo[🏗️ GitHub Repository<br/>Source Code & CI/CD]
-        LocalDev[💻 Local Development<br/>Docker Compose<br/>localhost:3000]
-        DockerBuild[🐳 Docker Build<br/>Multi-stage Build Process]
-    end
-    
-    subgraph "🎯 Application Flow"
-        subgraph "Database Operations"
-            Prisma[🔧 Prisma ORM<br/>Schema Management<br/>db push --accept-data-loss]
-            Seed[🌱 Database Seeding<br/>npx tsx prisma/seed.ts<br/>Auto Admin Creation]
-        end
-        
-        subgraph "Application Services"
-            NextJS[⚛️ Next.js App<br/>Frontend & API Routes<br/>Port 3000]
-            API[🔌 API Endpoints<br/>/api/auth, /api/posts<br/>/api/users, /api/admin]
-            Health[❤️ Health Check<br/>/api/health<br/>Database Connectivity]
-        end
-    end
-    
-    %% User Traffic Flow
-    User -->|HTTP Requests| Internet
-    Internet --> ALB
-    ALB -->|Target Group| Task1
-    Task1 -->|Database Queries| RDS
-    
-    %% Security & Networking
-    ALB -.-> ALBSG
-    Task1 -.-> ECSSG
-    RDS -.-> RDSSG
-    
-    %% Infrastructure Relationships
-    ECRRepo -->|Pull Images| ECSService
-    ECSService --> TaskDef
-    TaskDef --> Task1
-    ECSCluster --> ECSService
-    
-    %% Deployment Flow
-    GitRepo -->|Build & Push| DockerBuild
-    DockerBuild -->|Push Image| ECRRepo
-    LocalDev -.->|Development| GitRepo
-    
-    %% Monitoring
-    Task1 -->|Logs & Metrics| CloudWatch
-    ECSService -->|Service Events| CloudWatch
-    
-    %% Admin Management
-    AdminTask -->|One-time Execution| RDS
-    AdminTask -.-> ECRRepo
-    
-    %% Application Architecture
-    Task1 --> NextJS
-    NextJS --> API
-    NextJS --> Health
-    Task1 --> Prisma
-    Prisma --> Seed
-    Prisma --> RDS
-    
-    %% Placement in Infrastructure
-    ALB -.-> PubSub1
-    ALB -.-> PubSub2
-    Task1 -.-> PrivSub1
-    Task1 -.-> PrivSub2
-    RDS -.-> PrivSub1
-    RDS -.-> PrivSub2
+    ECS --> CloudWatch[📊 CloudWatch<br/>Logs & Monitoring]
 ```
 
 ### 🏗️ Infrastructure Components
 
 #### **Core AWS Services**
+
+**🌐 Content Delivery & Storage**
+- **☁️ CloudFront CDN** - `d1ch31psf2hczd.cloudfront.net`
+  - Global content delivery network
+  - Serves user avatars and static assets
+  - Low latency content distribution
+
+- **🪣 S3 Bucket** - `davesocialmediaapp`
+  - Avatar and file storage
+  - Static asset hosting
+  - Secure file upload/download
+
+**🚀 Compute & Load Balancing**
 - **🔀 Application Load Balancer (ALB)** - `social-media-alb-1380272211.us-east-2.elb.amazonaws.com`
   - Public-facing entry point
   - Health check configuration: `/api/health`
   - Target group routing to ECS tasks
 
-- **⚙️ ECS Cluster** - `social-media-cluster`
-  - Fargate launch type (serverless containers)
+- **🐳 ECS Fargate** - `social-media-cluster` / `social-media-service`
+  - Serverless container orchestration
   - Auto-scaling capabilities
-  - Service discovery and networking
-
-- **🐳 ECS Service** - `social-media-service`
-  - Desired count: 1 task
   - Rolling deployment strategy
-  - Health check grace period: 300 seconds
 
 - **📦 ECR Repository** - `337909777510.dkr.ecr.us-east-2.amazonaws.com/social-media-app`
   - Docker image registry
   - Automated image scanning
   - Lifecycle policies for cost optimization
 
+**🗄️ Database & Monitoring**
 - **🗄️ RDS PostgreSQL** - `social-media-postgres.c7sgoummmk7f.us-east-2.rds.amazonaws.com`
   - Production database instance
   - Automated backups and maintenance
-  - Multi-AZ deployment capability
+  - Performance insights enabled
+
+- **📊 CloudWatch** - `/ecs/social-media-app`
+  - Application logs and debugging
+  - ECS service events monitoring
+  - Custom metrics and alarms
 
 #### **Security & Networking**
 - **🏠 VPC** - Isolated network environment
